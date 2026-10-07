@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-cf41049f-d7e6-4c8e-a3b5-20c13ea1a3a6/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<script src="_ds/modernist-cf41049f-d7e6-4c8e-a3b5-20c13ea1a3a6/_ds_bundle.js"></script>
+<style>
+:root{
+  --ink:#07090a; --pcb:#0c0f12; --graphite:#13171b; --navy:#0b141d;
+  --edge:#242b31; --edge-soft:#1a2026; --text:#e9e7e4; --mute:#8c949b; --dim:#5d656c;
+  --copper:#bf7a4d; --copper-dim:#6b4430; --signal:#7fd4c8; --signal-dim:#2e544f;
+  --accent:#ec3013; --amber:#e3a33c; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+html{background:var(--ink);}
+body{background:var(--ink);color:var(--text);font-family:var(--font-body);margin:0;-webkit-font-smoothing:antialiased;}
+body::selection,::selection{background:color-mix(in srgb,var(--accent) 35%,transparent);}
+a{color:var(--text);text-decoration:none;}
+a:hover{color:var(--accent);}
+*{box-sizing:border-box;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ---------- scene engine ---------- */
+.scene{display:block;width:100%;height:auto;overflow:visible;}
+.cam{transform-box:view-box;transform-origin:50% 50%;transition:transform 1.3s cubic-bezier(.22,.76,.24,1);
+  transform:translate(var(--mx,0px),var(--my,0px));}
+.cam.fwide{transform:translate(var(--mx,0px),var(--my,0px)) scale(1);}
+.cam.fwire{transform:translate(var(--mx,0px),var(--my,0px)) scale(1.015);}
+.cam.fboard{transform:translate(calc(var(--mx,0px) - 8px),calc(var(--my,0px) + 4px)) scale(1.03);}
+.cam.fsense{transform:translate(calc(var(--mx,0px) + 26px),calc(var(--my,0px) + 2px)) scale(1.04);}
+.cam.flogic{transform:translate(calc(var(--mx,0px) - 4px),var(--my,0px)) scale(1.025);}
+.cam.fact{transform:translate(calc(var(--mx,0px) - 34px),calc(var(--my,0px) - 2px)) scale(1.045);}
+.part{transform-box:fill-box;transform-origin:50% 50%;transition:transform 1s cubic-bezier(.17,.84,.26,1),opacity .55s ease;}
+.lift{filter:drop-shadow(0 18px 22px rgba(0,0,0,.72));}
+.hidden{opacity:0 !important;}
+.enter-b{transform:translate(0,210px) rotate(-7deg) scale(.9);opacity:0;}
+.enter-l{transform:translate(-190px,40px) rotate(9deg) scale(.88);opacity:0;}
+.enter-r{transform:translate(200px,30px) rotate(-9deg) scale(.88);opacity:0;}
+.enter-t{transform:translate(0,-160px) rotate(5deg) scale(.9);opacity:0;}
+.d1{transition-delay:.05s}.d2{transition-delay:.3s}.d3{transition-delay:.55s}.d4{transition-delay:.8s}.d5{transition-delay:1.05s}
+
+/* wires */
+.w-base{fill:none;stroke:#05070a;stroke-width:9;stroke-linecap:round;stroke-linejoin:round;}
+.w-core{fill:none;stroke:var(--copper-dim);stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:2000;stroke-dashoffset:2000;transition:stroke-dashoffset 1.15s cubic-bezier(.4,.05,.2,1);}
+.w-base{stroke-dasharray:2000;stroke-dashoffset:2000;transition:stroke-dashoffset 1.15s cubic-bezier(.4,.05,.2,1);}
+.w.on .w-core,.w.on .w-base{stroke-dashoffset:0;}
+.w-live{fill:none;stroke:var(--signal);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:14 190;opacity:0;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--signal) 70%,transparent));}
+.w.live .w-live{opacity:1;animation:dashrun 1.5s linear infinite;}
+.w.live-slow .w-live{opacity:.85;animation:dashrun 2.6s linear infinite;}
+@keyframes dashrun{from{stroke-dashoffset:204}to{stroke-dashoffset:0}}
+.snap{fill:none;stroke:var(--signal);stroke-width:2;opacity:0;}
+.w.on .snap{animation:snapring .5s ease-out .95s;}
+@keyframes snapring{0%{opacity:.9;r:2}70%{opacity:.5}100%{opacity:0;r:13}}
+.pad{fill:#0a0d10;stroke:#3a434b;stroke-width:1.5;}
+.w.on .pad{fill:var(--copper-dim);stroke:var(--copper);}
+.pad,.w .pad{transition:fill .4s ease .9s,stroke .4s ease .9s;}
+
+/* board + package materials */
+.silk{fill:none;stroke:rgba(236,244,255,.16);stroke-width:1;}
+.silk-t{font-family:var(--mono);font-size:9px;letter-spacing:.09em;fill:rgba(234,242,255,.5);}
+.pin-t{font-family:var(--mono);font-size:7.5px;letter-spacing:.04em;fill:rgba(234,242,255,.42);}
+.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;fill:var(--mute);}
+.lbl-s{font-family:var(--mono);font-size:9px;letter-spacing:.14em;fill:var(--dim);}
+.hole{fill:#04060a;stroke:#4a545c;stroke-width:1.4;}
+.led{fill:#1d2328;stroke:#2e363d;stroke-width:1;transition:fill .3s ease,filter .3s ease;}
+.led.on{fill:var(--accent);filter:drop-shadow(0 0 7px var(--accent));}
+.led.on-g{fill:#79dc8f;filter:drop-shadow(0 0 7px #79dc8f);}
+.led.on-a{fill:var(--amber);filter:drop-shadow(0 0 8px var(--amber));}
+.led.blink{animation:ledblink 1.6s steps(1,end) infinite;}
+@keyframes ledblink{0%,55%{opacity:1}56%,100%{opacity:.35}}
+
+/* lcd */
+.lcd-glass{transition:fill .5s ease;}
+.lcd-chars{font-family:var(--mono);font-size:15px;letter-spacing:.17em;fill:#0b1a14;opacity:0;transition:opacity .4s ease;}
+.lit .lcd-chars{opacity:1;fill:#06130d;}
+.lcd-scan{fill:#dff7e6;opacity:0;}
+.lit .lcd-scan{animation:lcdscan 4.5s linear infinite;}
+@keyframes lcdscan{0%{opacity:0;transform:translateY(0)}6%{opacity:.07}50%{opacity:.04}100%{opacity:0;transform:translateY(58px)}}
+
+/* relay armature */
+.arm{transform-box:fill-box;transform-origin:4px 50%;transition:transform .16s cubic-bezier(.3,1.7,.5,1);}
+.closed .arm{transform:rotate(13deg);}
+.coil-f{opacity:0;transition:opacity .3s ease;}
+.closed .coil-f{opacity:1;}
+
+/* pump + water */
+.rotor{transform-box:fill-box;transform-origin:50% 50%;}
+.spin .rotor{animation:spin .55s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.water{opacity:0;transition:opacity .4s ease;}
+.water.flow{opacity:1;}
+.drop{fill:#6fb6e8;opacity:.85;}
+.soil-fill{transition:fill 1.8s linear;}
+
+/* panels */
+.panel-bg{fill:rgba(9,12,15,.9);stroke:var(--edge);stroke-width:1.5;}
+.panel{opacity:0;transform:translate(0,10px);transform-box:fill-box;transition:opacity .5s ease,transform .5s ease;}
+.panel.show{opacity:1;transform:none;}
+.reg{font-family:var(--mono);font-size:12px;letter-spacing:.1em;fill:var(--signal);}
+.code{font-family:var(--mono);font-size:12px;letter-spacing:.02em;fill:#cfd6dc;}
+.hl{fill:var(--amber);}
+.grid-l{stroke:rgba(140,160,180,.055);stroke-width:1;fill:none;}
+.nogrid .grid-l{display:none;}
+/* timer */
+.clk-pulse{opacity:0;}
+.ticking .clk-pulse{opacity:1;animation:clkrun 1.5s linear infinite;}
+.ticking .clk-pulse:nth-of-type(2){animation-delay:.5s;}
+.ticking .clk-pulse:nth-of-type(3){animation-delay:1s;}
+@keyframes clkrun{0%{transform:translateX(0);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:translateX(142px);opacity:0}}
+.bit{font-family:var(--mono);font-size:13px;letter-spacing:.38em;color:var(--signal);}
+.reg-name{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mute);}
+.reg-row{display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(140,160,180,.1);padding:5px 0;}
+.big-num{font-family:var(--mono);font-size:30px;font-weight:700;letter-spacing:.1em;color:#d8f3ea;}
+/* adc */
+.sine{fill:none;stroke:var(--signal);stroke-width:2.6;stroke-linecap:round;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--signal) 45%,transparent));}
+.sine-dim{fill:none;stroke:var(--signal-dim);stroke-width:2;}
+.stair{fill:none;stroke:var(--amber);stroke-width:2.6;stroke-dasharray:1400;stroke-dashoffset:1400;transition:stroke-dashoffset 1.6s ease-out;}
+.stair.show{stroke-dashoffset:0;}
+.qline{stroke:rgba(227,163,60,.2);stroke-width:1;}
+.marker{transition:transform .5s cubic-bezier(.3,.8,.3,1);}
+.holder{transition:transform .5s cubic-bezier(.3,.8,.3,1);}
+.zone-t{font-family:var(--mono);font-size:10px;letter-spacing:.18em;fill:var(--mute);}
+.fade{opacity:0;transition:opacity .6s ease;}
+.fade.show{opacity:1;}
+.bench{fill:none;stroke:rgba(140,160,180,.12);stroke-width:1.5;}
+.scope-l{fill:none;stroke:var(--signal);stroke-width:2;}
+.step-l{fill:none;stroke:var(--amber);stroke-width:2;}
+
+/* dismantle / handoff between projects */
+.tear .part{opacity:0 !important;transform:translateY(130px) scale(.93) !important;transition:opacity .45s ease .22s,transform .7s cubic-bezier(.4,0,.7,.2) .22s !important;}
+.tear .w .w-core,.tear .w .w-base{stroke-dashoffset:2000 !important;transition:stroke-dashoffset .75s cubic-bezier(.5,0,.75,0) !important;}
+.tear .w-live{opacity:0 !important;animation:none !important;}
+.tear .led{fill:#1d2328 !important;filter:none !important;animation:none !important;}
+.tear .panel,.tear .lcd-chars{opacity:0 !important;}
+.tear .pad{fill:#0a0d10 !important;stroke:#3a434b !important;}
+.tear .water,.tear .clk-pulse{opacity:0 !important;}
+.tear .cam{transform:scale(.985) !important;}
+/* chrome */
+.rule{height:2px;background:var(--edge);border:0;margin:0;}
+@media (max-width:1180px){
+  .pg{grid-template-columns:minmax(0,1fr) !important;gap:28px !important;}
+  .pg > div:first-child{position:static !important;}
+}
+@media (max-width:980px){
+  .g2{grid-template-columns:minmax(0,1fr) !important;gap:34px !important;}
+  .hero-g{min-height:0 !important;gap:26px !important;}
+  .hero-g > div:first-child{order:2;}
+  .hero-g > div:last-child{order:1;max-width:460px;margin:0 auto;width:100%;}
+  .b1 .reveal.r1,.b2 .reveal.r1,.b3 .reveal.r1{opacity:1;transform:none;}
+  .b3 .reveal.r2{opacity:1;transform:none;}
+}
+@media (max-width:1060px){
+  .avail{display:none !important;}
+  .navbar a{padding:8px 8px !important;font-size:9.5px !important;}
+}
+@media (max-width:760px){
+  .connector{height:64px;}
+  .navbar{scrollbar-width:none;}
+  .navbar::-webkit-scrollbar{display:none;}
+  .node{font-size:9.5px;padding:8px 9px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .tear .part{opacity:1 !important;transform:none !important;}
+  .tear .w .w-core,.tear .w .w-base{stroke-dashoffset:0 !important;}
+  .tear .panel,.tear .lcd-chars{opacity:1 !important;}
+}
+/* hero boot */
+.pwr{fill:#4a1109;}
+.b0 .pwr,.b1 .pwr,.b2 .pwr,.b3 .pwr,.b4 .pwr,.b5 .pwr{fill:var(--accent);animation:pwrpulse 1.9s ease-in-out infinite;}
+@keyframes pwrpulse{0%,100%{filter:drop-shadow(0 0 3px var(--accent));opacity:.55}50%{filter:drop-shadow(0 0 10px var(--accent));opacity:1}}
+.qpin{fill:#272e34;}
+.b2 .qpin,.b3 .qpin,.b4 .qpin,.b5 .qpin{animation:pinwake .9s ease-out forwards;}
+@keyframes pinwake{0%{fill:#272e34}35%{fill:var(--signal);filter:drop-shadow(0 0 6px var(--signal))}100%{fill:#8d969d;filter:none}}
+.htrace{fill:none;stroke:var(--copper-dim);stroke-width:3;stroke-dasharray:1600;stroke-dashoffset:1600;transition:stroke-dashoffset 1.5s cubic-bezier(.4,.05,.2,1);}
+.b3 .htrace,.b4 .htrace,.b5 .htrace{stroke-dashoffset:0;}
+.hflow{fill:none;stroke:var(--signal);stroke-width:2;stroke-dasharray:16 240;opacity:0;}
+.b4 .hflow,.b5 .hflow{opacity:.9;animation:dashrun 3s linear infinite;}
+.hclk{fill:none;stroke:var(--signal);stroke-width:2.4;stroke-dasharray:1200;stroke-dashoffset:1200;transition:stroke-dashoffset 1.2s ease-out;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--signal) 50%,transparent));}
+.b1 .hclk,.b2 .hclk,.b3 .hclk,.b4 .hclk,.b5 .hclk{stroke-dashoffset:0;}
+.die{opacity:0;transition:opacity .9s ease;}
+.b3 .die,.b4 .die,.b5 .die{opacity:1;}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .8s ease,transform .9s cubic-bezier(.16,.84,.26,1);}
+.b4 .r1,.b5 .r1{opacity:1;transform:none;}
+.b5 .r2{opacity:1;transform:none;}
+.b5 .r3{opacity:1;transform:none;transition-delay:.18s;}
+.ctl{position:relative;}
+.ctl::after{content:'';position:absolute;inset:-5px;border:1px solid transparent;transition:border-color .25s ease;}
+.ctl:hover::after{border-color:color-mix(in srgb,var(--accent) 55%,transparent);}
+.ctl:active{transform:translateY(1px);}
+.connector{display:flex;justify-content:center;height:96px;}
+.connector span{width:2px;height:100%;background:linear-gradient(180deg,var(--edge),var(--copper-dim),var(--edge));position:relative;overflow:visible;}
+.connector span::after{content:'';position:absolute;left:-2px;width:6px;height:6px;background:var(--signal);box-shadow:0 0 8px var(--signal);animation:railrun 3.4s linear infinite;}
+@keyframes railrun{0%{top:-6px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:96px;opacity:0}}
+.lane{fill:none;stroke:var(--signal);stroke-width:2.4;stroke-linejoin:round;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--signal) 40%,transparent));}
+.node{border:1px solid var(--edge);padding:9px 11px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute);background:var(--graphite);cursor:pointer;transition:border-color .2s ease,color .2s ease,background .2s ease;}
+.node:hover{border-color:var(--accent);color:var(--text);background:#191e22;}
+@media (prefers-reduced-motion: reduce){
+  .b0 .pwr,.b1 .pwr,.b2 .pwr,.b3 .pwr,.b4 .pwr,.b5 .pwr,.b2 .qpin,.b3 .qpin,.b4 .qpin,.b5 .qpin,.b4 .hflow,.b5 .hflow,.connector span::after{animation:none !important;}
+  .qpin{fill:#8d969d;}
+  .reveal{transition-duration:.01ms !important;}
+}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);}
+@media (prefers-reduced-motion: reduce){
+  .part,.cam,.w-core,.w-base,.arm,.soil-fill,.panel{transition-duration:.01ms !important;}
+  .w.live .w-live,.spin .rotor,.lit .lcd-scan,.led.blink,.w.on .snap{animation:none !important;}
+  .w .w-live{opacity:.5;animation:none !important;}
+}
+</style>
+</helmet>
+
+<div class="{{ rootCls }}" style="background:var(--ink);color:var(--text);min-height:100vh;font-family:var(--font-body);overflow-x:clip;">
+
+<header style="position:sticky;top:0;z-index:40;background:rgba(7,9,10,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--edge-soft);">
+  <div style="max-width:1480px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:24px;">
+    <a href="#top" style="display:flex;align-items:center;gap:11px;text-decoration:none;">
+      <span style="width:30px;height:30px;border:1px solid var(--copper-dim);display:grid;place-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--copper);">AB</span>
+      <span style="display:flex;flex-direction:column;line-height:1.15;">
+        <span style="font-family:var(--mono);font-size:11px;letter-spacing:.17em;color:var(--text);">A. BERTHINAND</span>
+        <span style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);">EMBEDDED SYSTEMS ENGINEER</span>
+      </span>
+    </a>
+    <nav class="navbar" style="margin-left:auto;display:flex;gap:4px;align-items:center;white-space:nowrap;overflow-x:auto;">
+      <a href="#about" style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);padding:8px 11px;" style-hover="color:var(--text)">PROFILE</a>
+      <a href="#stack" style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);padding:8px 11px;" style-hover="color:var(--text)">STACK</a>
+      <a href="#lab" style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);padding:8px 11px;" style-hover="color:var(--text)">PROJECT LAB</a>
+      <a href="#experience" style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);padding:8px 11px;" style-hover="color:var(--text)">EXPERIENCE</a>
+      <a href="#contact" style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);padding:8px 11px;" style-hover="color:var(--text)">CONTACT</a>
+    </nav>
+    <span class="avail" style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;letter-spacing:.15em;color:var(--dim);border-left:1px solid var(--edge-soft);padding-left:16px;">
+      <span style="width:6px;height:6px;background:#79dc8f;box-shadow:0 0 7px #79dc8f;"></span>OPEN TO OPPORTUNITIES
+    </span>
+  </div>
+</header>
+
+<section id="top" class="{{ bootCls }}" style="max-width:1480px;margin:0 auto;padding:60px 24px 40px;">
+  <div class="g2 hero-g" style="display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center;min-height:min(78vh,760px);">
+    <div style="display:flex;flex-direction:column;gap:30px;">
+      <div class="reveal r1" style="display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);">
+        <span style="width:34px;height:1px;background:var(--copper);"></span>EMBEDDED SYSTEMS / FIRMWARE / HARDWARE
+      </div>
+      <div>
+        <h1 class="reveal r1" style="font-family:var(--font-heading);font-weight:800;font-size:clamp(46px,6.6vw,104px);line-height:.9;letter-spacing:-.04em;margin:0;">A. BERTHI<span style="color:var(--accent);">NAND</span></h1>
+        <div class="reveal r2" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:14px;margin-top:18px;font-family:var(--font-heading);font-weight:600;font-size:clamp(18px,2.1vw,30px);letter-spacing:-.01em;color:var(--text);">
+          <span>EMBEDDED SYSTEMS</span>
+          <span style="color:var(--accent);font-weight:800;">&amp;</span>
+          <span>FIRMWARE ENGINEER</span>
+        </div>
+      </div>
+      <p class="reveal r2" style="margin:0;font-size:clamp(15px,1.3vw,18px);line-height:1.6;color:var(--mute);max-width:46ch;text-wrap:pretty;">Turning registers, signals and microcontrollers into working systems.</p>
+      <div class="reveal r3" style="display:flex;flex-wrap:wrap;gap:10px;">
+        <a class="ctl" href="#lab" style="background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:15px 20px;display:flex;align-items:center;gap:26px;" style-hover="background:var(--color-accent-600)">VIEW PROJECT LAB<span>↘</span></a>
+        <a class="ctl" href="https://github.com/a-berthinand" target="_blank" rel="noreferrer" style="border:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:15px 20px;display:flex;align-items:center;gap:26px;" style-hover="color:var(--text);border-color:var(--copper-dim)">GITHUB<span>↗</span></a>
+        <a class="ctl" href="mailto:berthinand99@gmail.com" style="border:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:15px 20px;display:flex;align-items:center;gap:26px;" style-hover="color:var(--text);border-color:var(--copper-dim)">EMAIL<span>↗</span></a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;border-left:1px solid var(--edge-soft);padding-left:14px;margin-top:4px;">
+        <sc-for list="{{ bootLines }}" as="l" hint-placeholder-count="6">
+          <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;opacity:{{ l.op }};color:{{ l.color }};transition:opacity .5s ease;">{{ l.t }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="min-width:0;">
+      <svg viewBox="0 0 700 700" style="display:block;width:100%;height:auto;overflow:hidden;" role="img" aria-label="A microcontroller package powers up: the supply indicator lights, a clock signal appears, the pins activate in sequence and the board traces begin carrying current">
+        <defs>
+          <linearGradient id="hq" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b3238"/><stop offset=".45" stop-color="#171c21"/><stop offset="1" stop-color="#0a0d10"/></linearGradient>
+          <linearGradient id="hdie" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a4a52"/><stop offset="1" stop-color="#1b2429"/></linearGradient>
+          <radialGradient id="hglow" cx=".5" cy=".5"><stop offset="0" stop-color="rgba(127,212,200,.13)"/><stop offset="1" stop-color="rgba(127,212,200,0)"/></radialGradient>
+        </defs>
+
+        <circle cx="350" cy="350" r="330" fill="url(#hglow)"/>
+        <g class="grid-l"><path d="M70 0v700M140 0v700M210 0v700M280 0v700M350 0v700M420 0v700M490 0v700M560 0v700M630 0v700M0 70h700M0 140h700M0 210h700M0 280h700M0 350h700M0 420h700M0 490h700M0 560h700M0 630h700"/></g>
+
+        <path class="htrace" d="M168 240 H80 Q62 240 62 258 V420 Q62 438 80 438 H168"/>
+        <path class="htrace" d="M532 240 H628 Q646 240 646 258 V140"/>
+        <path class="htrace" d="M240 532 V620 Q240 638 258 638 H470"/>
+        <path class="htrace" d="M460 168 V84 Q460 66 478 66 H628"/>
+        <path class="hflow" d="M168 240 H80 Q62 240 62 258 V420 Q62 438 80 438 H168"/>
+        <path class="hflow" d="M532 240 H628 Q646 240 646 258 V140"/>
+        <path class="hflow" d="M240 532 V620 Q240 638 258 638 H470"/>
+
+        <g>
+          <sc-for list="{{ heroPins }}" as="p" hint-placeholder-count="56">
+            <rect class="qpin" x="{{ p.x }}" y="{{ p.y }}" width="{{ p.w }}" height="{{ p.h }}" style="animation-delay:{{ p.d }};"></rect>
+          </sc-for>
+        </g>
+
+        <rect x="206" y="206" width="292" height="292" fill="#02050a" opacity=".6"/>
+        <rect x="200" y="200" width="300" height="300" fill="url(#hq)" stroke="#05080a" stroke-width="2"/>
+        <rect x="214" y="214" width="272" height="272" fill="none" stroke="rgba(255,255,255,.05)"/>
+        <circle cx="238" cy="238" r="9" fill="none" stroke="rgba(255,255,255,.14)"/>
+        <circle cx="238" cy="238" r="3.5" fill="#4b545b"/>
+        <g class="die">
+          <rect x="268" y="268" width="164" height="164" fill="url(#hdie)" opacity=".5"/>
+          <path d="M268 300h164M268 330h164M268 360h164M268 390h164M298 268v164M328 268v164M358 268v164M388 268v164" stroke="rgba(127,212,200,.16)" stroke-width="1"/>
+        </g>
+        <text x="350" y="332" text-anchor="middle" style="font-family:var(--mono);font-size:26px;letter-spacing:.24em;fill:#c3ccd2;">AB · 8051</text>
+        <text x="350" y="362" text-anchor="middle" style="font-family:var(--mono);font-size:11px;letter-spacing:.3em;fill:#79838b;">EMBEDDED SYSTEMS</text>
+        <text x="350" y="384" text-anchor="middle" style="font-family:var(--mono);font-size:11px;letter-spacing:.3em;fill:#79838b;">FIRMWARE ENGINEER</text>
+        <text x="350" y="430" text-anchor="middle" style="font-family:var(--mono);font-size:9px;letter-spacing:.2em;fill:#4e565d;">CHENNAI · INDIA</text>
+
+        <circle class="pwr" cx="624" cy="604" r="7"/>
+        <text x="604" y="632" text-anchor="middle" style="font-family:var(--mono);font-size:9px;letter-spacing:.18em;fill:#6b747b;">PWR</text>
+        <path class="hclk" d="M48 664 H84 V634 H120 V664 H156 V634 H192 V664 H228 V634 H264 V664 H300 V634 H336 V664 H372 V634 H408 V664 H444 V634 H480 V664 H516"/>
+        <text x="48" y="690" style="font-family:var(--mono);font-size:9px;letter-spacing:.18em;fill:#6b747b;">CLK</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="about" style="max-width:1480px;margin:0 auto;padding:40px 24px 80px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:2px solid var(--edge);padding-bottom:14px;margin-bottom:46px;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">01 / ENGINEERING IDENTITY</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">ABOUT THE ENGINEER</div>
+  </div>
+  <div class="g2" style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:56px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:26px;">
+      <h2 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(28px,3.4vw,52px);line-height:1.02;letter-spacing:-.03em;margin:0;">Curious by nature.<br><span style="color:var(--copper);">Precise by design.</span></h2>
+      <p style="margin:0;font-size:16px;line-height:1.7;color:var(--mute);max-width:56ch;text-wrap:pretty;">I am an Electronics and Communication Engineering student drawn to the layer where code meets current. I work with microcontrollers, firmware and real hardware, building a careful understanding of how a system behaves from pin to output.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--edge);border:1px solid var(--edge);">
+        <div style="background:var(--ink);padding:18px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);">FOCUS</div><div style="font-family:var(--mono);font-size:12px;letter-spacing:.1em;margin-top:8px;">LOW-LEVEL SYSTEMS</div></div>
+        <div style="background:var(--ink);padding:18px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);">METHOD</div><div style="font-family:var(--mono);font-size:12px;letter-spacing:.1em;margin-top:8px;">BUILD · DEBUG · VALIDATE</div></div>
+        <div style="background:var(--ink);padding:18px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);">BASED IN</div><div style="font-family:var(--mono);font-size:12px;letter-spacing:.1em;margin-top:8px;">CHENNAI, INDIA</div></div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--edge);background:var(--graphite);">
+      <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--edge);font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);"><span>ENGINEER PROFILE</span><span>001 / ACTIVE</span></div>
+      <div style="padding:26px 16px;display:grid;place-items:center;">
+        <svg viewBox="0 0 220 150" style="width:100%;height:auto;" aria-hidden="true">
+          <g fill="#9aa4ab">
+            <rect x="34" y="10" width="7" height="12"/><rect x="58" y="10" width="7" height="12"/><rect x="82" y="10" width="7" height="12"/><rect x="106" y="10" width="7" height="12"/><rect x="130" y="10" width="7" height="12"/><rect x="154" y="10" width="7" height="12"/><rect x="178" y="10" width="7" height="12"/>
+            <rect x="34" y="128" width="7" height="12"/><rect x="58" y="128" width="7" height="12"/><rect x="82" y="128" width="7" height="12"/><rect x="106" y="128" width="7" height="12"/><rect x="130" y="128" width="7" height="12"/><rect x="154" y="128" width="7" height="12"/><rect x="178" y="128" width="7" height="12"/>
+          </g>
+          <rect x="26" y="22" width="168" height="106" fill="#1a1f24" stroke="#05080a" stroke-width="1.5"/>
+          <path d="M26 66a11 11 0 0 0 0 20z" fill="#0a0d10"/>
+          <text x="110" y="72" text-anchor="middle" style="font-family:var(--mono);font-size:19px;letter-spacing:.22em;fill:#c3ccd2;">A.B.</text>
+          <text x="110" y="94" text-anchor="middle" style="font-family:var(--mono);font-size:8.5px;letter-spacing:.2em;fill:#79838b;">ECE · 40-PIN THINKING</text>
+          <circle cx="178" cy="36" r="4" fill="#79dc8f"/>
+        </svg>
+      </div>
+      <div style="border-top:1px solid var(--edge);">
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--edge-soft);font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">DEGREE</span><span>B.E. ECE</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--edge-soft);font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">EXPECTED</span><span>2027</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">PINOUT</span><span>01.01</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="stack" style="max-width:1480px;margin:0 auto;padding:40px 24px 80px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:2px solid var(--edge);padding-bottom:14px;margin-bottom:46px;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">02 / TECHNICAL STACK</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">EMBEDDED ARCHITECTURE</div>
+  </div>
+  <div class="g2" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:24px;">
+      <h2 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(26px,3vw,44px);line-height:1.02;letter-spacing:-.03em;margin:0;">Every pin has<br><span style="color:var(--copper);">a purpose.</span></h2>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:var(--mute);max-width:48ch;">Select a peripheral or protocol to see what it actually does on the wire.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--edge);border:1px solid var(--edge);">
+        <div style="background:var(--ink);padding:14px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);margin-bottom:9px;">PROGRAMMING</div><div style="font-family:var(--mono);font-size:11px;line-height:1.9;">C<br>EMBEDDED C</div></div>
+        <div style="background:var(--ink);padding:14px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);margin-bottom:9px;">MCUs</div><div style="font-family:var(--mono);font-size:11px;line-height:1.9;">8051<br>AT89C51<br>ATmega<br>ARDUINO<br>ARM · BASIC</div></div>
+        <div style="background:var(--ink);padding:14px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);margin-bottom:9px;">TOOLS</div><div style="font-family:var(--mono);font-size:11px;line-height:1.9;">KEIL µVISION<br>PROTEUS<br>ARDUINO IDE<br>STM32CubeIDE<br>MPLAB X</div></div>
+        <div style="background:var(--ink);padding:14px;"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);margin-bottom:9px;">OS</div><div style="font-family:var(--mono);font-size:11px;line-height:1.9;">LINUX · BEGINNER</div></div>
+      </div>
+    </div>
+
+    <div style="min-width:0;border:1px solid var(--edge);background:var(--graphite);">
+      <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--edge);font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;color:var(--dim);">
+        <span>PERIPHERAL / PROTOCOL STUDY</span><span>{{ protoName }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:14px 16px;border-bottom:1px solid var(--edge);">
+        <sc-for list="{{ protoList }}" as="p" hint-placeholder-count="7">
+          <button class="node" onClick="{{ p.pick }}" onMouseEnter="{{ p.pick }}" style="background:{{ p.bg }};color:{{ p.color }};border-color:{{ p.bd }};">{{ p.name }}</button>
+        </sc-for>
+      </div>
+      <div style="padding:18px 16px;background:radial-gradient(120% 120% at 50% 0%,#0f1317 0%,#080a0d 70%);">
+        <svg viewBox="0 0 760 250" style="display:block;width:100%;height:auto;" role="img" aria-label="Waveform of the selected protocol or peripheral">
+          <g class="grid-l"><path d="M40 0v250M120 0v250M200 0v250M280 0v250M360 0v250M440 0v250M520 0v250M600 0v250M680 0v250M0 50h760M0 100h760M0 150h760M0 200h760"/></g>
+          <g transform="translate(26 18)">
+            <sc-for list="{{ protoLanes }}" as="l" hint-placeholder-count="3">
+              <g transform="translate(0 {{ l.y }})">
+                <text x="-22" y="30" style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;fill:var(--mute);">{{ l.name }}</text>
+                <path d="M0 48H714" stroke="rgba(140,160,180,.12)"/>
+                <path class="lane" d="{{ l.d }}"/>
+              </g>
+            </sc-for>
+          </g>
+        </svg>
+      </div>
+      <div style="padding:13px 16px;border-top:1px solid var(--edge);font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;color:var(--dim);line-height:1.6;">{{ protoNote }}</div>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="experience" style="max-width:1480px;margin:0 auto;padding:40px 24px 80px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:2px solid var(--edge);padding-bottom:14px;margin-bottom:46px;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">03 / EXPERIENCE</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">FIRMWARE DEVELOPMENT CYCLE</div>
+  </div>
+  <div class="g2" style="display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:48px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div style="display:flex;gap:14px;font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--dim);"><span>MAY 2024 — JULY 2024</span><span style="color:var(--copper);">12 WEEKS</span></div>
+      <h2 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(30px,3.6vw,54px);line-height:1;letter-spacing:-.03em;margin:0;">MetaWyse</h2>
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mute);">INTERN · EMBEDDED SYSTEMS</div>
+      <p style="margin:0;font-size:15.5px;line-height:1.7;color:var(--mute);max-width:46ch;text-wrap:pretty;">Hands-on firmware work spanning microcontroller programming, debugging and testing, contributing to hardware–software integration and embedded code validation.</p>
+      <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim);line-height:1.6;border-left:2px solid var(--copper-dim);padding-left:10px;">Internship scope as recorded. No proprietary project detail is shown.</div>
+    </div>
+    <div style="display:grid;gap:1px;background:var(--edge);border:1px solid var(--edge);">
+      <sc-for list="{{ flowSteps }}" as="st" hint-placeholder-count="6">
+        <div style="background:var(--ink);display:flex;align-items:center;gap:18px;padding:17px 18px;border-left:2px solid {{ st.bd }};transition:border-color .4s ease;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--dim);width:20px;">{{ st.n }}</span>
+          <span style="width:8px;height:8px;background:{{ st.dot }};box-shadow:{{ st.glow }};transition:background .4s ease,box-shadow .4s ease;"></span>
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:{{ st.color }};transition:color .4s ease;">{{ st.name }}</span>
+          <span style="margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--dim);">{{ st.sub }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="lab" style="max-width:1480px;margin:0 auto;padding:40px 24px 120px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:2px solid var(--edge);padding-bottom:14px;margin-bottom:46px;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">04 / INTERACTIVE PROJECTS</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">PROJECT LAB · THREE SYSTEMS</div>
+  </div>
+
+  <article id="project-timer" ref="{{ tmrRef }}" style="position:relative;margin-bottom:120px;">
+    <div class="pg" style="display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:40px;align-items:start;">
+      <div style="position:sticky;top:40px;display:flex;flex-direction:column;gap:22px;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border-bottom:1px solid var(--edge-soft);padding-bottom:8px;">
+          <span>PROJECT 01</span><span>8051 · EMBEDDED C</span>
+        </div>
+        <h3 style="font-family:var(--font-heading);font-weight:800;font-size:40px;line-height:.98;letter-spacing:-.025em;margin:0;">8051 digital<br>timer</h3>
+        <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--mute);max-width:40ch;text-wrap:pretty;">A clock source, the on-chip timer registers and a display module assembled into one working circuit: pulses in, count out.</p>
+        <div style="border-top:1px solid var(--edge-soft);padding-top:14px;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;">
+            <span style="width:7px;height:7px;background:var(--signal);box-shadow:0 0 8px var(--signal);"></span>
+            <span>{{ tmrStageName }}</span><span style="margin-left:auto;color:var(--dim);">{{ tmrCount }}</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <sc-for list="{{ tmrTrack }}" as="seg" hint-placeholder-count="6"><span style="height:3px;flex:1;background:{{ seg.bg }}"></span></sc-for>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--dim);line-height:1.5;">{{ tmrHint }}</div>
+        </div>
+        <div style="display:flex;border:1px solid var(--edge);">
+          <button onClick="{{ tmrPrev }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">PREV</button>
+          <button onClick="{{ tmrNext }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">NEXT</button>
+          <button onClick="{{ tmrReplay }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">REPLAY</button>
+          <button onClick="{{ tmrRun }}" style="flex:1;background:transparent;border:0;color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">{{ tmrRunLabel }}</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--edge-soft);padding-top:14px;">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">MICROCONTROLLER</span><span>8051 · AT89C51</span></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">LANGUAGE</span><span>EMBEDDED C</span></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">TOOLS</span><span>KEIL µVISION 5 · PROTEUS</span></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim);line-height:1.6;border-left:2px solid var(--copper-dim);padding-left:10px;">
+          Display hardware, crystal value and reload values are not specified in the project notes; the module and values shown are a configurable demonstration.
+        </div>
+      </div>
+
+      <div style="min-width:0;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-bottom:0;padding:10px 14px;background:var(--graphite);">
+          <span>LIVE CIRCUIT SIMULATION</span><span>SCROLL TO SEQUENCE ↓</span>
+        </div>
+        <div style="border:1px solid var(--edge);background:radial-gradient(120% 120% at 50% 0%,#101519 0%,#080a0d 70%);overflow:hidden;">
+          <svg class="scene {{ tmrTear }}" viewBox="0 0 1120 640" data-s="{{ tmrS }}" role="img" aria-label="An 8051 package, crystal and display module assemble, the timer registers are configured, and clock pulses increment the count">
+            <defs>
+              <linearGradient id="tdip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262b30"/><stop offset=".5" stop-color="#15191d"/><stop offset="1" stop-color="#0b0e11"/></linearGradient>
+              <linearGradient id="tmet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4dade"/><stop offset=".45" stop-color="#99a3aa"/><stop offset="1" stop-color="#5e676e"/></linearGradient>
+              <linearGradient id="tglass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b2a"/><stop offset="1" stop-color="#0e1816"/></linearGradient>
+            </defs>
+            <g class="grid-l"><path d="M40 0v640M120 0v640M200 0v640M280 0v640M360 0v640M440 0v640M520 0v640M600 0v640M680 0v640M760 0v640M840 0v640M920 0v640M1000 0v640M1080 0v640M0 40h1120M0 120h1120M0 200h1120M0 280h1120M0 360h1120M0 440h1120M0 520h1120M0 600h1120"/></g>
+            <text x="26" y="34" class="lbl-s">WORKBENCH / TIMER · 8051 CORE</text>
+            <text x="1094" y="34" text-anchor="end" class="lbl-s">FIG. 01</text>
+            <path class="bench" d="M0 536h1120"/>
+
+            <g class="cam">
+              <!-- FLOATING FIRMWARE / REGISTER PANEL -->
+              <g transform="translate(348 48)">
+                <g class="panel {{ tmrPanel }}">
+                  <rect width="452" height="168" class="panel-bg"/>
+                  <foreignObject x="1" y="1" width="450" height="166">
+                    <div style="padding:12px 16px;font-family:var(--mono);">
+                      <div style="display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.16em;color:var(--dim);margin-bottom:8px;">
+                        <span>TIMER REGISTERS · FIRMWARE VIEW</span><span>{{ tmrFlag }}</span>
+                      </div>
+                      <div class="reg-row"><span class="reg-name" style="width:48px;">TMOD</span><span class="bit">{{ tmrTMOD }}</span></div>
+                      <div class="reg-row"><span class="reg-name" style="width:48px;">TCON</span><span class="bit">{{ tmrTCON }}</span></div>
+                      <div class="reg-row" style="border:0;"><span class="reg-name" style="width:48px;">THx</span><span class="bit">{{ tmrTH }}</span><span class="reg-name" style="margin-left:18px;">TLx</span><span class="bit">{{ tmrTL }}</span></div>
+                      <div style="font-size:9px;letter-spacing:.1em;color:var(--dim);margin-top:6px;">BIT PATTERNS SHOWN FOR DEMONSTRATION · PROJECT VALUES NOT SPECIFIED</div>
+                    </div>
+                  </foreignObject>
+                </g>
+              </g>
+
+              <!-- 8051 DIP-40 -->
+              <g transform="translate(392 306)">
+                <g class="part lift {{ tmrP.mcu }}">
+                  <g fill="url(#tmet)">
+                    <rect x="10" y="-15" width="8" height="15"/><rect x="26" y="-15" width="8" height="15"/><rect x="42" y="-15" width="8" height="15"/><rect x="58" y="-15" width="8" height="15"/><rect x="74" y="-15" width="8" height="15"/><rect x="90" y="-15" width="8" height="15"/><rect x="106" y="-15" width="8" height="15"/><rect x="122" y="-15" width="8" height="15"/><rect x="138" y="-15" width="8" height="15"/><rect x="154" y="-15" width="8" height="15"/><rect x="170" y="-15" width="8" height="15"/><rect x="186" y="-15" width="8" height="15"/><rect x="202" y="-15" width="8" height="15"/><rect x="218" y="-15" width="8" height="15"/><rect x="234" y="-15" width="8" height="15"/><rect x="250" y="-15" width="8" height="15"/><rect x="266" y="-15" width="8" height="15"/><rect x="282" y="-15" width="8" height="15"/><rect x="298" y="-15" width="8" height="15"/><rect x="314" y="-15" width="8" height="15"/>
+                    <rect x="10" y="120" width="8" height="15"/><rect x="26" y="120" width="8" height="15"/><rect x="42" y="120" width="8" height="15"/><rect x="58" y="120" width="8" height="15"/><rect x="74" y="120" width="8" height="15"/><rect x="90" y="120" width="8" height="15"/><rect x="106" y="120" width="8" height="15"/><rect x="122" y="120" width="8" height="15"/><rect x="138" y="120" width="8" height="15"/><rect x="154" y="120" width="8" height="15"/><rect x="170" y="120" width="8" height="15"/><rect x="186" y="120" width="8" height="15"/><rect x="202" y="120" width="8" height="15"/><rect x="218" y="120" width="8" height="15"/><rect x="234" y="120" width="8" height="15"/><rect x="250" y="120" width="8" height="15"/><rect x="266" y="120" width="8" height="15"/><rect x="282" y="120" width="8" height="15"/><rect x="298" y="120" width="8" height="15"/><rect x="314" y="120" width="8" height="15"/>
+                  </g>
+                  <rect x="4" y="8" width="328" height="118" fill="#02050a" opacity=".6"/>
+                  <rect width="332" height="120" fill="url(#tdip)" stroke="#05080a" stroke-width="1.5"/>
+                  <path d="M0 48a12 12 0 0 0 0 24z" fill="#0a0d10" stroke="#05080a"/>
+                  <rect x="8" y="8" width="316" height="104" fill="none" stroke="rgba(255,255,255,.045)"/>
+                  <circle cx="22" cy="104" r="4" fill="#3b4349"/>
+                  <text x="166" y="56" text-anchor="middle" style="font-family:var(--mono);font-size:22px;letter-spacing:.3em;fill:#b9c2c8;">AT89C51</text>
+                  <text x="166" y="78" text-anchor="middle" class="pin-t" style="font-size:9px;letter-spacing:.22em;">8051 CORE · 40-PIN DIP</text>
+                  <text x="166" y="98" text-anchor="middle" class="pin-t">TIMER 0 / TIMER 1 · 8-BIT PORTS</text>
+                  <text x="8" y="150" class="pin-t">XTAL1 / XTAL2</text>
+                  <text x="252" y="150" class="pin-t">PORT 1</text>
+                  <circle cx="310" cy="24" r="5" class="led {{ tmrLed }}"/>
+                </g>
+                <text x="166" y="182" text-anchor="middle" class="lbl {{ tmrP.mcu }}">8051 MICROCONTROLLER</text>
+              </g>
+
+              <!-- CRYSTAL + CAPS -->
+              <g transform="translate(120 320)">
+                <g class="part lift {{ tmrP.xtal }}">
+                  <path d="M0 14a14 14 0 0 1 14-14h66a14 14 0 0 1 14 14v34H0z" fill="url(#tmet)" stroke="#49525a"/>
+                  <path d="M6 20h82" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+                  <text x="47" y="34" text-anchor="middle" style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;fill:#2d343a;">XTAL</text>
+                  <g stroke="url(#tmet)" stroke-width="3"><path d="M24 48v20"/><path d="M70 48v20"/></g>
+                </g>
+                <g class="part lift {{ tmrP.caps }}">
+                  <circle cx="14" cy="86" r="11" fill="#9a7b3c" stroke="#5c4a24"/><circle cx="80" cy="86" r="11" fill="#9a7b3c" stroke="#5c4a24"/>
+                  <g stroke="url(#tmet)" stroke-width="2.4"><path d="M14 97v14"/><path d="M80 97v14"/></g>
+                </g>
+                <text x="47" y="-28" text-anchor="middle" class="lbl {{ tmrP.xtal }}">CRYSTAL + CAPS</text>
+                <text x="47" y="-12" text-anchor="middle" class="lbl-s {{ tmrP.xtal }}">VALUE CONFIGURABLE</text>
+              </g>
+
+              <!-- DISPLAY MODULE (hardware-neutral) -->
+              <g transform="translate(812 300)">
+                <g class="part lift {{ tmrP.disp }}">
+                  <rect x="3" y="6" width="258" height="134" fill="#02050a" opacity=".55"/>
+                  <rect width="258" height="134" fill="#15191d" stroke="#05080a" stroke-width="2"/>
+                  <rect x="18" y="18" width="222" height="76" fill="url(#tglass)" stroke="#0a120e"/>
+                  <foreignObject x="18" y="30" width="222" height="52">
+                    <div class="big-num" style="text-align:center;">{{ tmrDisp }}</div>
+                  </foreignObject>
+                  <rect x="18" y="104" width="120" height="12" fill="#0a0d10" stroke="#000"/>
+                  <g fill="url(#tmet)"><rect x="22" y="107" width="4" height="7"/><rect x="31" y="107" width="4" height="7"/><rect x="40" y="107" width="4" height="7"/><rect x="49" y="107" width="4" height="7"/><rect x="58" y="107" width="4" height="7"/><rect x="67" y="107" width="4" height="7"/><rect x="76" y="107" width="4" height="7"/><rect x="85" y="107" width="4" height="7"/><rect x="94" y="107" width="4" height="7"/><rect x="103" y="107" width="4" height="7"/><rect x="112" y="107" width="4" height="7"/><rect x="121" y="107" width="4" height="7"/></g>
+                  <text x="240" y="114" text-anchor="end" class="pin-t">HEADER</text>
+                </g>
+                <text x="129" y="-28" text-anchor="middle" class="lbl {{ tmrP.disp }}">DISPLAY MODULE</text>
+                <text x="129" y="-12" text-anchor="middle" class="lbl-s {{ tmrP.disp }}">TYPE CONFIGURABLE</text>
+              </g>
+
+              <!-- OSCILLATOR WIRE + CLOCK PULSES -->
+              <g class="w {{ tmrW.w1 }}">
+                <path class="w-base" d="M190 388 H340 Q352 388 352 376 V352 H400"/>
+                <path class="w-core" d="M190 388 H340 Q352 388 352 376 V352 H400" stroke="#8d6a3f"/>
+                <path class="w-live" d="M190 388 H340 Q352 388 352 376 V352 H400"/>
+                <circle class="pad" cx="190" cy="388" r="4"/><circle class="pad" cx="400" cy="352" r="4"/>
+                <circle class="snap" cx="400" cy="352" r="2"/>
+              </g>
+              <g class="{{ tmrClk }}" transform="translate(246 388)">
+                <rect class="clk-pulse" x="0" y="-16" width="8" height="14" fill="var(--signal)"/>
+                <rect class="clk-pulse" x="0" y="-16" width="8" height="14" fill="var(--signal)"/>
+                <rect class="clk-pulse" x="0" y="-16" width="8" height="14" fill="var(--signal)"/>
+              </g>
+              <!-- DATA BUS TO DISPLAY -->
+              <g class="w {{ tmrW.w2 }}">
+                <path class="w-base" d="M726 330 H812 M726 346 H812 M726 362 H812 M726 378 H812" stroke-width="6"/>
+                <path class="w-core" d="M726 330 H812 M726 346 H812 M726 362 H812 M726 378 H812" stroke="#6a717a" stroke-width="2.6"/>
+                <path class="w-live" d="M726 346 H812" stroke-dasharray="10 60"/>
+                <circle class="snap" cx="812" cy="346" r="2"/>
+              </g>
+              <!-- GROUND -->
+              <g class="w {{ tmrW.w3 }}">
+                <path class="w-base" d="M166 442 V512 Q166 524 178 524 H900 Q912 524 912 512 V440"/>
+                <path class="w-core" d="M166 442 V512 Q166 524 178 524 H900 Q912 524 912 512 V440" stroke="#3f464c"/>
+                <circle class="pad" cx="166" cy="442" r="4"/><circle class="pad" cx="912" cy="440" r="4"/>
+              </g>
+
+              <!-- SIGNAL CHAIN CAPTION -->
+              <g transform="translate(40 556)">
+                <g class="panel {{ tmrPanel }}">
+                  <rect width="430" height="64" class="panel-bg"/>
+                  <foreignObject x="1" y="1" width="428" height="62">
+                    <div style="padding:10px 14px;font-family:var(--mono);">
+                      <div style="font-size:9px;letter-spacing:.16em;color:var(--dim);">EXECUTION PATH</div>
+                      <div style="font-size:12.5px;letter-spacing:.1em;color:var(--signal);margin-top:6px;">CLOCK → TIMER REGISTER → FIRMWARE → DISPLAY</div>
+                    </div>
+                  </foreignObject>
+                </g>
+              </g>
+              <g transform="translate(640 556)">
+                <g class="panel {{ tmrPanel }}">
+                  <rect width="440" height="64" class="panel-bg"/>
+                  <foreignObject x="1" y="1" width="438" height="62">
+                    <div style="padding:10px 14px;font-family:var(--mono);">
+                      <div style="font-size:9px;letter-spacing:.16em;color:var(--dim);">SYSTEM STATE</div>
+                      <div style="font-size:12.5px;letter-spacing:.09em;color:var(--signal);margin-top:6px;">{{ tmrState }}</div>
+                    </div>
+                  </foreignObject>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-top:0;padding:10px 14px;">
+          <span>CLOCK → REGISTERS → OUTPUT</span><span>{{ tmrSeq }}</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article id="project-adc" ref="{{ adcRef }}" style="position:relative;margin-bottom:120px;">
+    <div class="pg" style="display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:40px;align-items:start;">
+      <div style="position:sticky;top:40px;display:flex;flex-direction:column;gap:22px;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border-bottom:1px solid var(--edge-soft);padding-bottom:8px;">
+          <span>PROJECT 02</span><span>8051 · ANALOG INPUT</span>
+        </div>
+        <h3 style="font-family:var(--font-heading);font-weight:800;font-size:40px;line-height:.98;letter-spacing:-.025em;margin:0;">8051 ADC<br>interfacing</h3>
+        <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--mute);max-width:40ch;text-wrap:pretty;">A continuous sensor voltage is held, compared against discrete steps, encoded as a word, read by the 8051 and written to a 16×2 LCD.</p>
+        <div style="border-top:1px solid var(--edge-soft);padding-top:14px;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;">
+            <span style="width:7px;height:7px;background:var(--signal);box-shadow:0 0 8px var(--signal);"></span>
+            <span>{{ adcStageName }}</span><span style="margin-left:auto;color:var(--dim);">{{ adcCount }}</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <sc-for list="{{ adcTrack }}" as="seg" hint-placeholder-count="8"><span style="height:3px;flex:1;background:{{ seg.bg }}"></span></sc-for>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--dim);line-height:1.5;">{{ adcHint }}</div>
+        </div>
+        <div style="display:flex;border:1px solid var(--edge);">
+          <button onClick="{{ adcPrev }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">PREV</button>
+          <button onClick="{{ adcNext }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">NEXT</button>
+          <button onClick="{{ adcReplay }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">REPLAY</button>
+          <button onClick="{{ adcRun }}" style="flex:1;background:transparent;border:0;color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">{{ adcRunLabel }}</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--edge-soft);padding-top:14px;">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">MICROCONTROLLER</span><span>8051</span></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">LANGUAGE</span><span>EMBEDDED C</span></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.12em;"><span style="color:var(--dim);">OUTPUT</span><span>16 × 2 CHARACTER LCD</span></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim);line-height:1.6;border-left:2px solid var(--copper-dim);padding-left:10px;">
+          The converter device and its resolution are not specified in the project notes. Levels, word width and voltages here are an illustration of the conversion principle.
+        </div>
+      </div>
+
+      <div style="min-width:0;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-bottom:0;padding:10px 14px;background:var(--graphite);">
+          <span>LIVE SIGNAL PATH</span><span>SCROLL TO SEQUENCE ↓</span>
+        </div>
+        <div style="border:1px solid var(--edge);background:radial-gradient(120% 120% at 50% 0%,#101519 0%,#080a0d 70%);overflow:hidden;">
+          <svg class="scene {{ adcTear }}" viewBox="0 0 1120 640" data-s="{{ adcS }}" role="img" aria-label="An analog voltage is sampled, quantised to discrete levels, encoded as a binary word, processed by the 8051 and displayed on a 16 by 2 LCD">
+            <defs>
+              <linearGradient id="adip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262b30"/><stop offset=".5" stop-color="#15191d"/><stop offset="1" stop-color="#0b0e11"/></linearGradient>
+              <linearGradient id="amet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4dade"/><stop offset=".45" stop-color="#99a3aa"/><stop offset="1" stop-color="#5e676e"/></linearGradient>
+              <linearGradient id="apcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15375c"/><stop offset="1" stop-color="#091b2e"/></linearGradient>
+              <pattern id="apx" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="2.1" height="2.1" fill="rgba(0,0,0,.16)"/></pattern>
+            </defs>
+            <g class="grid-l"><path d="M40 0v640M120 0v640M200 0v640M280 0v640M360 0v640M440 0v640M520 0v640M600 0v640M680 0v640M760 0v640M840 0v640M920 0v640M1000 0v640M1080 0v640M0 40h1120M0 120h1120M0 200h1120M0 280h1120M0 360h1120M0 440h1120M0 520h1120M0 600h1120"/></g>
+            <text x="26" y="34" class="lbl-s">WORKBENCH / SIGNAL PATH · ANALOG TO DIGITAL</text>
+            <text x="1094" y="34" text-anchor="end" class="lbl-s">FIG. 02</text>
+
+            <g class="cam">
+              <!-- ANALOG SENSOR -->
+              <g transform="translate(54 150)">
+                <g class="part lift {{ adcP.sensor }}">
+                  <rect width="104" height="56" fill="url(#apcb)" stroke="#06121d" stroke-width="1.5"/>
+                  <rect x="4" y="4" width="96" height="48" class="silk"/>
+                  <circle cx="30" cy="28" r="15" fill="#2b3238" stroke="#141a1f"/>
+                  <path d="M30 28 L42 19" stroke="#c6ced4" stroke-width="2.4"/>
+                  <circle cx="30" cy="28" r="3" fill="#8e979e"/>
+                  <rect x="70" y="14" width="22" height="28" fill="#0e1318" stroke="#000"/>
+                  <g fill="url(#amet)"><rect x="75" y="18" width="4" height="7"/><rect x="83" y="18" width="4" height="7"/><rect x="75" y="30" width="4" height="7"/><rect x="83" y="30" width="4" height="7"/></g>
+                  <text x="8" y="50" class="pin-t">Vout 0 – 5 V</text>
+                </g>
+                <text x="52" y="82" text-anchor="middle" class="lbl {{ adcP.sensor }}">ANALOG SENSOR</text>
+              </g>
+
+              <!-- ADC MODULE -->
+              <g transform="translate(272 140)">
+                <g class="part lift {{ adcP.conv }}">
+                  <g fill="url(#amet)">
+                    <rect x="12" y="-14" width="8" height="14"/><rect x="34" y="-14" width="8" height="14"/><rect x="56" y="-14" width="8" height="14"/><rect x="78" y="-14" width="8" height="14"/><rect x="100" y="-14" width="8" height="14"/><rect x="122" y="-14" width="8" height="14"/>
+                    <rect x="12" y="76" width="8" height="14"/><rect x="34" y="76" width="8" height="14"/><rect x="56" y="76" width="8" height="14"/><rect x="78" y="76" width="8" height="14"/><rect x="100" y="76" width="8" height="14"/><rect x="122" y="76" width="8" height="14"/>
+                  </g>
+                  <rect x="3" y="5" width="142" height="74" fill="#02050a" opacity=".55"/>
+                  <rect width="144" height="76" fill="url(#adip)" stroke="#05080a" stroke-width="1.5"/>
+                  <path d="M0 30a10 10 0 0 0 0 20z" fill="#0a0d10"/>
+                  <text x="72" y="34" text-anchor="middle" style="font-family:var(--mono);font-size:13px;letter-spacing:.2em;fill:#b9c2c8;">ADC</text>
+                  <text x="72" y="52" text-anchor="middle" class="pin-t">CONVERTER MODULE</text>
+                  <text x="72" y="66" text-anchor="middle" class="pin-t">DEVICE CONFIGURABLE</text>
+                  <circle cx="132" cy="14" r="4" class="led {{ adcLed }}"/>
+                </g>
+                <text x="72" y="116" text-anchor="middle" class="lbl {{ adcP.conv }}">ADC MODULE</text>
+              </g>
+
+              <!-- 8051 -->
+              <g transform="translate(508 146)">
+                <g class="part lift {{ adcP.mcu }}">
+                  <g fill="url(#amet)">
+                    <rect x="10" y="-13" width="7" height="13"/><rect x="26" y="-13" width="7" height="13"/><rect x="42" y="-13" width="7" height="13"/><rect x="58" y="-13" width="7" height="13"/><rect x="74" y="-13" width="7" height="13"/><rect x="90" y="-13" width="7" height="13"/><rect x="106" y="-13" width="7" height="13"/><rect x="122" y="-13" width="7" height="13"/><rect x="138" y="-13" width="7" height="13"/><rect x="154" y="-13" width="7" height="13"/><rect x="170" y="-13" width="7" height="13"/><rect x="186" y="-13" width="7" height="13"/><rect x="202" y="-13" width="7" height="13"/><rect x="218" y="-13" width="7" height="13"/>
+                    <rect x="10" y="94" width="7" height="13"/><rect x="26" y="94" width="7" height="13"/><rect x="42" y="94" width="7" height="13"/><rect x="58" y="94" width="7" height="13"/><rect x="74" y="94" width="7" height="13"/><rect x="90" y="94" width="7" height="13"/><rect x="106" y="94" width="7" height="13"/><rect x="122" y="94" width="7" height="13"/><rect x="138" y="94" width="7" height="13"/><rect x="154" y="94" width="7" height="13"/><rect x="170" y="94" width="7" height="13"/><rect x="186" y="94" width="7" height="13"/><rect x="202" y="94" width="7" height="13"/><rect x="218" y="94" width="7" height="13"/>
+                  </g>
+                  <rect x="3" y="6" width="234" height="92" fill="#02050a" opacity=".6"/>
+                  <rect width="236" height="94" fill="url(#adip)" stroke="#05080a" stroke-width="1.5"/>
+                  <path d="M0 37a11 11 0 0 0 0 20z" fill="#0a0d10"/>
+                  <text x="118" y="46" text-anchor="middle" style="font-family:var(--mono);font-size:17px;letter-spacing:.26em;fill:#b9c2c8;">8051</text>
+                  <text x="118" y="66" text-anchor="middle" class="pin-t">PORT READ · SCALE · WRITE</text>
+                  <circle cx="218" cy="20" r="4.5" class="led {{ adcLed }}"/>
+                </g>
+                <text x="118" y="134" text-anchor="middle" class="lbl {{ adcP.mcu }}">8051 MICROCONTROLLER</text>
+              </g>
+
+              <!-- LCD -->
+              <g transform="translate(810 138)">
+                <g class="part lift {{ adcP.lcd }}">
+                  <rect x="2" y="5" width="264" height="108" fill="#030607" opacity=".5"/>
+                  <rect width="264" height="108" fill="#15191d" stroke="#05080a" stroke-width="2"/>
+                  <rect x="10" y="100" width="150" height="12" fill="#0a0d10" stroke="#000"/>
+                  <g fill="url(#amet)"><rect x="14" y="103" width="4" height="7"/><rect x="23" y="103" width="4" height="7"/><rect x="32" y="103" width="4" height="7"/><rect x="41" y="103" width="4" height="7"/><rect x="50" y="103" width="4" height="7"/><rect x="59" y="103" width="4" height="7"/><rect x="68" y="103" width="4" height="7"/><rect x="77" y="103" width="4" height="7"/><rect x="86" y="103" width="4" height="7"/><rect x="95" y="103" width="4" height="7"/><rect x="104" y="103" width="4" height="7"/><rect x="113" y="103" width="4" height="7"/><rect x="122" y="103" width="4" height="7"/><rect x="131" y="103" width="4" height="7"/><rect x="140" y="103" width="4" height="7"/><rect x="149" y="103" width="4" height="7"/></g>
+                  <circle cx="8" cy="8" r="4" class="hole"/><circle cx="256" cy="8" r="4" class="hole"/>
+                  <g class="{{ adcLcdLit }}">
+                    <rect x="20" y="16" width="224" height="68" class="lcd-glass" fill="{{ adcLcdFill }}" stroke="#0a120e"/>
+                    <rect x="20" y="16" width="224" height="68" fill="url(#apx)" opacity=".5"/>
+                    <foreignObject x="24" y="22" width="216" height="58" class="lcd-chars">
+                      <div style="font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:.165em;line-height:28px;color:#04120b;white-space:pre;">{{ adcLcd1 }}</div>
+                      <div style="font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:.165em;line-height:28px;color:#04120b;white-space:pre;">{{ adcLcd2 }}</div>
+                    </foreignObject>
+                    <rect x="20" y="16" width="224" height="10" class="lcd-scan"/>
+                  </g>
+                  <text x="196" y="96" class="pin-t">16 × 2</text>
+                </g>
+                <text x="132" y="140" text-anchor="middle" class="lbl {{ adcP.lcd }}">CHARACTER LCD</text>
+              </g>
+
+              <!-- SIGNAL PATH WIRES -->
+              <g class="w {{ adcW.w1 }}">
+                <path class="w-base" d="M164 178 H268"/>
+                <path class="w-core" d="M164 178 H268" stroke="#2e6b64"/>
+                <path class="w-live" d="M164 178 H268" stroke-dasharray="10 60"/>
+                <circle class="pad" cx="164" cy="178" r="4"/><circle class="pad" cx="268" cy="178" r="4"/>
+                <circle class="snap" cx="268" cy="178" r="2"/>
+              </g>
+              <g class="w {{ adcW.w2 }}">
+                <path class="w-base" d="M420 160 H504 M420 176 H504 M420 192 H504 M420 208 H504" stroke-width="6"/>
+                <path class="w-core" d="M420 160 H504 M420 176 H504 M420 192 H504 M420 208 H504" stroke="#6a717a" stroke-width="2.6"/>
+                <path class="w-live" d="M420 176 H504" stroke-dasharray="10 60"/>
+                <circle class="snap" cx="504" cy="176" r="2"/>
+                <text x="462" y="146" text-anchor="middle" class="pin-t">DATA BUS</text>
+              </g>
+              <g class="w {{ adcW.w3 }}">
+                <path class="w-base" d="M750 176 H806 M750 192 H806 M750 208 H806" stroke-width="6"/>
+                <path class="w-core" d="M750 176 H806 M750 192 H806 M750 208 H806" stroke="#6a717a" stroke-width="2.6"/>
+                <path class="w-live" d="M750 192 H806" stroke-dasharray="10 50"/>
+                <circle class="snap" cx="806" cy="192" r="2"/>
+              </g>
+
+              <!-- TRANSFORMATION PANEL -->
+              <g transform="translate(40 300)">
+                <rect width="1040" height="300" class="panel-bg"/>
+                <text x="18" y="26" class="zone-t">SIGNAL TRANSFORMATION · THE CONVERSION ITSELF</text>
+                <text x="1022" y="26" text-anchor="end" class="lbl-s">SAMPLE {{ adcSampleNo }}</text>
+                <path d="M18 38H1022" stroke="rgba(140,160,180,.14)"/>
+
+                <!-- waveform stage -->
+                <g transform="translate(40 170)">
+                  <path d="M0 -84H660M0 84H660" stroke="rgba(140,160,180,.1)"/>
+                  <g class="fade {{ adcQuant }}">
+                    <path class="qline" d="M0 -55H660M0 -41.25H660M0 -27.5H660M0 -13.75H660M0 0H660M0 13.75H660M0 27.5H660M0 41.25H660M0 55H660"/>
+                    <text x="668" y="-52" class="pin-t">LEVELS</text>
+                    <text x="668" y="-38" class="pin-t">ILLUSTRATIVE</text>
+                  </g>
+                  <path class="sine-dim" d="{{ adcSineD }}"/>
+                  <path class="sine" d="{{ adcSineD }}"/>
+                  <path class="stair {{ adcQuant }}" d="{{ adcStairD }}"/>
+                  <g class="marker" style="{{ adcMarkStyle }}">
+                    <path d="M0 -96V96" stroke="rgba(236,48,19,.55)" stroke-width="1.5" stroke-dasharray="4 4"/>
+                    <g class="holder" style="{{ adcHoldStyle }}">
+                      <circle r="6" fill="var(--accent)"/>
+                      <circle r="12" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity=".4"/>
+                    </g>
+                  </g>
+                  <text x="0" y="118" class="pin-t">t</text>
+                  <text x="-18" y="-80" class="pin-t">V</text>
+                </g>
+
+                <text x="58" y="78" class="zone-t">CONTINUOUS INPUT</text>
+                <text x="330" y="78" class="zone-t">SAMPLE &amp; HOLD → QUANTISE</text>
+
+                <!-- digital word -->
+                <g transform="translate(768 60)">
+                  <path d="M0 0V220" stroke="rgba(140,160,180,.14)"/>
+                  <foreignObject x="24" y="4" width="248" height="216">
+                    <div style="font-family:var(--mono);">
+                      <div style="font-size:10px;letter-spacing:.18em;color:var(--mute);">DIGITAL WORD</div>
+                      <div style="font-size:17px;letter-spacing:.24em;color:var(--signal);margin-top:14px;">{{ adcBits }}</div>
+                      <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:11px;letter-spacing:.14em;color:var(--dim);"><span>HEX</span><span style="color:var(--text);">{{ adcHexV }}</span></div>
+                      <div style="height:1px;background:var(--edge);margin:8px 0;"></div>
+                      <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;color:var(--dim);"><span>SCALED</span><span style="color:var(--amber);">{{ adcVolts }}</span></div>
+                      <div style="height:6px;background:#141a1e;margin-top:14px;"><div style="height:6px;background:var(--amber);{{ adcBarStyle }}"></div></div>
+                      <div style="font-size:9px;letter-spacing:.1em;color:var(--dim);margin-top:14px;line-height:1.6;">8-BIT SCALING SHOWN FOR DEMONSTRATION · DEVICE RESOLUTION NOT SPECIFIED</div>
+                    </div>
+                  </foreignObject>
+                </g>
+              </g>
+
+              <!-- STATE -->
+              <g transform="translate(40 610)">
+                <foreignObject x="0" y="0" width="1040" height="26">
+                  <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--signal);">
+                    <span>{{ adcState }}</span><span style="color:var(--dim);">SAMPLE → CONVERT → PROCESS → DISPLAY</span>
+                  </div>
+                </foreignObject>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-top:0;padding:10px 14px;">
+          <span>ANALOG → QUANTISE → DIGITAL → DISPLAY</span><span>{{ adcSeq }}</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article id="project-irrigation" ref="{{ irrRef }}" style="position:relative;">
+    <div class="pg" style="display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:40px;align-items:start;">
+
+      <div style="position:sticky;top:40px;display:flex;flex-direction:column;gap:22px;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border-bottom:1px solid var(--edge-soft);padding-bottom:8px;">
+          <span>PROJECT 03</span><span>ARDUINO · CLOSED LOOP</span>
+        </div>
+        <h3 style="font-family:var(--font-heading);font-weight:800;font-size:40px;line-height:.98;letter-spacing:-.025em;margin:0;text-wrap:pretty;">Smart temperature<br>monitoring &amp;<br>automatic irrigation</h3>
+        <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--mute);max-width:40ch;text-wrap:pretty;">Temperature and soil moisture feed an Arduino. When the demonstration soil dries, firmware closes a relay and the pump runs until moisture recovers.</p>
+
+        <div style="border-top:1px solid var(--edge-soft);padding-top:14px;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;">
+            <span style="width:7px;height:7px;background:var(--signal);box-shadow:0 0 8px var(--signal);"></span>
+            <span style="color:var(--text);">{{ irrStageName }}</span>
+            <span style="margin-left:auto;color:var(--dim);">{{ irrCount }}</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <sc-for list="{{ irrTrack }}" as="seg" hint-placeholder-count="9">
+              <span style="height:3px;flex:1;background:{{ seg.bg }}"></span>
+            </sc-for>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--dim);line-height:1.5;">{{ irrHint }}</div>
+        </div>
+
+        <div style="display:flex;gap:0;border:1px solid var(--edge);">
+          <button onClick="{{ irrPrev }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">PREV</button>
+          <button onClick="{{ irrNext }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">NEXT</button>
+          <button onClick="{{ irrReplay }}" style="flex:1;background:transparent;border:0;border-right:1px solid var(--edge);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">REPLAY</button>
+          <button onClick="{{ irrRun }}" style="flex:1;background:transparent;border:0;color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:11px 6px;cursor:pointer;" style-hover="background:rgba(236,48,19,.1);color:var(--text)">{{ irrRunLabel }}</button>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ irrParts }}" as="p" hint-placeholder-count="6">
+            <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;padding:5px 8px;border:1px solid {{ p.border }};color:{{ p.color }};">{{ p.name }}</span>
+          </sc-for>
+        </div>
+
+        <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim);line-height:1.6;border-left:2px solid var(--copper-dim);padding-left:10px;">
+          Readings, threshold and wiring positions shown are a demonstration of the control logic, not recorded measurements.
+        </div>
+      </div>
+
+      <div style="min-width:0;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-bottom:0;padding:10px 14px;background:var(--graphite);">
+          <span>LIVE CIRCUIT SIMULATION</span><span>SCROLL TO SEQUENCE ↓</span>
+        </div>
+        <div style="border:1px solid var(--edge);background:radial-gradient(120% 120% at 50% 0%,#101519 0%,#080a0d 70%);position:relative;overflow:hidden;">
+          <svg class="scene {{ irrTear }}" viewBox="0 0 1120 640" data-s="{{ irrS }}" ref="{{ irrSvg }}" role="img" aria-label="An Arduino, LM35, soil sensor, LCD, relay and pump assemble, wire themselves, power on and run a closed irrigation loop">
+            <defs>
+              <linearGradient id="ipcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12403e"/><stop offset="1" stop-color="#08201f"/></linearGradient>
+              <linearGradient id="ipcb2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15375c"/><stop offset="1" stop-color="#091b2e"/></linearGradient>
+              <linearGradient id="imetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4dade"/><stop offset=".45" stop-color="#9aa4ab"/><stop offset="1" stop-color="#5f686f"/></linearGradient>
+              <linearGradient id="iplastic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23292f"/><stop offset="1" stop-color="#0d1114"/></linearGradient>
+              <linearGradient id="iglass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f8f63"/><stop offset="1" stop-color="#1d5a3c"/></linearGradient>
+              <linearGradient id="iglassoff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16241d"/><stop offset="1" stop-color="#0d1713"/></linearGradient>
+              <linearGradient id="isoil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#53382a"/><stop offset="1" stop-color="#2d1f17"/></linearGradient>
+              <radialGradient id="ipump" cx=".35" cy=".3"><stop offset="0" stop-color="#4b545b"/><stop offset="1" stop-color="#1a1f23"/></radialGradient>
+              <pattern id="ipx" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="none"/><rect width="2.1" height="2.1" fill="rgba(0,0,0,.16)"/></pattern>
+            </defs>
+
+            <g class="grid-l"><path d="M40 0v640M120 0v640M200 0v640M280 0v640M360 0v640M440 0v640M520 0v640M600 0v640M680 0v640M760 0v640M840 0v640M920 0v640M1000 0v640M1080 0v640M0 40h1120M0 120h1120M0 200h1120M0 280h1120M0 360h1120M0 440h1120M0 520h1120M0 600h1120"/></g>
+            <path class="bench" d="M0 548h1120"/>
+            <text x="26" y="34" class="lbl-s">WORKBENCH / FIELD CONTROL · ARDUINO UNO</text>
+            <text x="1094" y="34" text-anchor="end" class="lbl-s">FIG. 03</text>
+
+            <g class="cam {{ irrFocus }}" ref="{{ irrCam }}">
+
+              <!-- ARDUINO UNO -->
+              <g transform="translate(410 252)">
+                <g class="part lift {{ irrP.uno }}">
+                  <rect x="2" y="6" width="300" height="172" fill="#030607" opacity=".55"/>
+                  <rect width="300" height="172" fill="url(#ipcb)" stroke="#071a19" stroke-width="2"/>
+                  <rect x="6" y="6" width="288" height="160" class="silk"/>
+                  <circle cx="16" cy="16" r="4.5" class="hole"/><circle cx="284" cy="16" r="4.5" class="hole"/><circle cx="16" cy="156" r="4.5" class="hole"/><circle cx="284" cy="156" r="4.5" class="hole"/>
+                  <rect x="-16" y="22" width="34" height="48" fill="url(#imetal)" stroke="#444c52"/><rect x="-10" y="30" width="22" height="32" fill="#2a3135"/>
+                  <rect x="-12" y="108" width="30" height="40" fill="url(#iplastic)" stroke="#000"/><circle cx="-2" cy="128" r="6" fill="#05070a"/>
+                  <rect x="66" y="2" width="186" height="15" fill="#0a0d10" stroke="#000"/>
+                  <g fill="url(#imetal)"><rect x="70" y="5" width="4" height="9"/><rect x="82" y="5" width="4" height="9"/><rect x="94" y="5" width="4" height="9"/><rect x="106" y="5" width="4" height="9"/><rect x="118" y="5" width="4" height="9"/><rect x="130" y="5" width="4" height="9"/><rect x="142" y="5" width="4" height="9"/><rect x="154" y="5" width="4" height="9"/><rect x="166" y="5" width="4" height="9"/><rect x="178" y="5" width="4" height="9"/><rect x="190" y="5" width="4" height="9"/><rect x="202" y="5" width="4" height="9"/><rect x="214" y="5" width="4" height="9"/><rect x="226" y="5" width="4" height="9"/><rect x="238" y="5" width="4" height="9"/></g>
+                  <text x="66" y="28" class="pin-t">DIGITAL  (PWM ~)</text>
+                  <rect x="40" y="155" width="210" height="15" fill="#0a0d10" stroke="#000"/>
+                  <g fill="url(#imetal)"><rect x="46" y="158" width="4" height="9"/><rect x="58" y="158" width="4" height="9"/><rect x="70" y="158" width="4" height="9"/><rect x="82" y="158" width="4" height="9"/><rect x="94" y="158" width="4" height="9"/><rect x="106" y="158" width="4" height="9"/><rect x="118" y="158" width="4" height="9"/><rect x="130" y="158" width="4" height="9"/><rect x="142" y="158" width="4" height="9"/><rect x="154" y="158" width="4" height="9"/><rect x="166" y="158" width="4" height="9"/><rect x="178" y="158" width="4" height="9"/><rect x="190" y="158" width="4" height="9"/><rect x="202" y="158" width="4" height="9"/><rect x="214" y="158" width="4" height="9"/><rect x="226" y="158" width="4" height="9"/><rect x="238" y="158" width="4" height="9"/></g>
+                  <text x="40" y="150" class="pin-t">POWER</text><text x="150" y="150" class="pin-t">ANALOG IN</text>
+                  <rect x="96" y="62" width="124" height="54" fill="#10151a" stroke="#05080a" stroke-width="1.5"/>
+                  <path d="M96 84a10 10 0 0 0 0 10" fill="#05080a"/>
+                  <g fill="#8b949b"><rect x="100" y="56" width="7" height="7"/><rect x="116" y="56" width="7" height="7"/><rect x="132" y="56" width="7" height="7"/><rect x="148" y="56" width="7" height="7"/><rect x="164" y="56" width="7" height="7"/><rect x="180" y="56" width="7" height="7"/><rect x="196" y="56" width="7" height="7"/><rect x="100" y="115" width="7" height="7"/><rect x="116" y="115" width="7" height="7"/><rect x="132" y="115" width="7" height="7"/><rect x="148" y="115" width="7" height="7"/><rect x="164" y="115" width="7" height="7"/><rect x="180" y="115" width="7" height="7"/><rect x="196" y="115" width="7" height="7"/></g>
+                  <text x="158" y="86" text-anchor="middle" class="silk-t">ATmega328P</text>
+                  <text x="158" y="100" text-anchor="middle" class="pin-t">8-BIT AVR MCU</text>
+                  <rect x="40" y="46" width="30" height="16" fill="url(#imetal)" stroke="#3f474d"/><text x="55" y="76" text-anchor="middle" class="pin-t">16MHz</text>
+                  <rect x="262" y="40" width="22" height="22" fill="#2a3036" stroke="#0a0d10"/><circle cx="273" cy="51" r="6" fill="#55606a"/><text x="273" y="74" text-anchor="middle" class="pin-t">RST</text>
+                  <text x="20" y="100" class="silk-t" style="font-size:13px;letter-spacing:.16em;">UNO</text>
+                  <circle cx="246" cy="128" r="5" class="led {{ irrLed.pwr }}"/><text x="232" y="146" class="pin-t">ON</text>
+                  <circle cx="226" cy="128" r="5" class="led {{ irrLed.l13 }}"/><text x="208" y="146" class="pin-t">L13</text>
+                </g>
+                <text x="150" y="208" text-anchor="middle" class="lbl {{ irrP.uno }}">ARDUINO UNO</text>
+              </g>
+
+              <!-- LM35 -->
+              <g transform="translate(96 124)">
+                <g class="part lift {{ irrP.lm35 }}">
+                  <path d="M8 44a30 30 0 0 1 60 0v30H8z" fill="url(#iplastic)" stroke="#05070a" stroke-width="1.5"/>
+                  <path d="M8 60h60" stroke="rgba(255,255,255,.07)"/>
+                  <ellipse cx="38" cy="38" rx="16" ry="11" fill="#2d3439" opacity=".8"/>
+                  <text x="38" y="42" text-anchor="middle" class="silk-t">LM35</text>
+                  <g stroke="url(#imetal)" stroke-width="3.2"><path d="M22 74v18"/><path d="M38 74v18"/><path d="M54 74v18"/></g>
+                  <text x="20" y="104" class="pin-t">+Vs  OUT  GND</text>
+                </g>
+                <text x="38" y="124" text-anchor="middle" class="lbl {{ irrP.lm35 }}">LM35 · TEMP</text>
+              </g>
+
+              <!-- SOIL SENSOR -->
+              <g transform="translate(130 452)">
+                <g class="part lift {{ irrP.soil }}">
+                  <rect width="96" height="46" fill="url(#ipcb2)" stroke="#06121d" stroke-width="1.5"/>
+                  <rect x="4" y="4" width="88" height="38" class="silk"/>
+                  <rect x="60" y="12" width="30" height="22" fill="#0e1318" stroke="#000"/>
+                  <g fill="url(#imetal)"><rect x="64" y="15" width="4" height="7"/><rect x="72" y="15" width="4" height="7"/><rect x="80" y="15" width="4" height="7"/></g>
+                  <circle cx="22" cy="23" r="6" class="led {{ irrLed.soil }}"/>
+                  <text x="8" y="40" class="pin-t">A0 · MOIST</text>
+                  <g fill="url(#imetal)"><rect x="24" y="46" width="9" height="72"/><rect x="58" y="46" width="9" height="72"/></g>
+                  <path d="M24 118h9l-4.5 10zM58 118h9l-4.5 10z" fill="#8c959c"/>
+                </g>
+                <text x="48" y="152" text-anchor="middle" class="lbl {{ irrP.soil }}">SOIL MOISTURE</text>
+              </g>
+
+              <!-- LCD 16x2 -->
+              <g transform="translate(430 52)">
+                <g class="part lift {{ irrP.lcd }}">
+                  <rect x="2" y="5" width="264" height="108" fill="#030607" opacity=".5"/>
+                  <rect width="264" height="108" fill="#15191d" stroke="#05080a" stroke-width="2"/>
+                  <rect x="10" y="100" width="150" height="12" fill="#0a0d10" stroke="#000"/>
+                  <g fill="url(#imetal)"><rect x="14" y="103" width="4" height="7"/><rect x="23" y="103" width="4" height="7"/><rect x="32" y="103" width="4" height="7"/><rect x="41" y="103" width="4" height="7"/><rect x="50" y="103" width="4" height="7"/><rect x="59" y="103" width="4" height="7"/><rect x="68" y="103" width="4" height="7"/><rect x="77" y="103" width="4" height="7"/><rect x="86" y="103" width="4" height="7"/><rect x="95" y="103" width="4" height="7"/><rect x="104" y="103" width="4" height="7"/><rect x="113" y="103" width="4" height="7"/><rect x="122" y="103" width="4" height="7"/><rect x="131" y="103" width="4" height="7"/><rect x="140" y="103" width="4" height="7"/><rect x="149" y="103" width="4" height="7"/></g>
+                  <circle cx="8" cy="8" r="4" class="hole"/><circle cx="256" cy="8" r="4" class="hole"/><circle cx="8" cy="92" r="4" class="hole"/><circle cx="256" cy="92" r="4" class="hole"/>
+                  <g class="{{ irrLcdLit }}">
+                    <rect x="20" y="16" width="224" height="68" class="lcd-glass" fill="{{ irrLcdFill }}" stroke="#0a120e"/>
+                    <rect x="20" y="16" width="224" height="68" fill="url(#ipx)" opacity=".5"/>
+                    <foreignObject x="24" y="22" width="216" height="58" class="lcd-chars">
+                      <div style="font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:.165em;line-height:28px;color:#04120b;white-space:pre;">{{ irrLcd1 }}</div>
+                      <div style="font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:.165em;line-height:28px;color:#04120b;white-space:pre;">{{ irrLcd2 }}</div>
+                    </foreignObject>
+                    <rect x="20" y="16" width="224" height="10" class="lcd-scan"/>
+                  </g>
+                  <text x="196" y="96" class="pin-t">16 × 2</text>
+                </g>
+                <text x="264" y="134" text-anchor="end" class="lbl {{ irrP.lcd }}">CHARACTER LCD · 16 × 2</text>
+              </g>
+
+              <!-- RELAY MODULE -->
+              <g transform="translate(786 258)">
+                <g class="part lift {{ irrP.relay }}">
+                  <rect x="2" y="5" width="152" height="104" fill="#030607" opacity=".5"/>
+                  <rect width="152" height="104" fill="url(#ipcb2)" stroke="#06121d" stroke-width="2"/>
+                  <rect x="5" y="5" width="142" height="94" class="silk"/>
+                  <rect x="-2" y="34" width="22" height="34" fill="#0e1318" stroke="#000"/>
+                  <g fill="url(#imetal)"><rect x="4" y="38" width="4" height="7"/><rect x="4" y="48" width="4" height="7"/><rect x="4" y="58" width="4" height="7"/></g>
+                  <text x="24" y="44" class="pin-t">IN</text><text x="24" y="54" class="pin-t">VCC</text><text x="24" y="64" class="pin-t">GND</text>
+                  <g class="{{ irrRelayCls }}">
+                    <rect x="48" y="22" width="60" height="58" fill="#16365f" stroke="#081527" stroke-width="1.5" opacity=".92"/>
+                    <rect x="52" y="26" width="52" height="50" fill="rgba(10,22,38,.55)"/>
+                    <rect x="56" y="34" width="16" height="34" fill="#2a4a74" class="coil-f" />
+                    <rect x="56" y="34" width="16" height="34" fill="none" stroke="#4e7bb0" stroke-width="1.2"/>
+                    <path d="M58 38h12M58 44h12M58 50h12M58 56h12M58 62h12" stroke="#7fa6d4" stroke-width="1" opacity=".5"/>
+                    <rect class="arm" x="76" y="42" width="26" height="4" fill="url(#imetal)"/>
+                    <circle cx="80" cy="44" r="2.5" fill="#cdd4d9"/>
+                    <circle cx="100" cy="38" r="2" fill="#9aa4ab"/><circle cx="100" cy="54" r="2" fill="#9aa4ab"/>
+                    <text x="78" y="72" class="pin-t">NO / NC</text>
+                  </g>
+                  <rect x="112" y="24" width="34" height="54" fill="#1d5a2e" stroke="#0a2514"/>
+                  <g fill="#b9c1c7"><rect x="120" y="32" width="18" height="4"/><rect x="120" y="48" width="18" height="4"/><rect x="120" y="64" width="18" height="4"/></g>
+                  <circle cx="30" cy="86" r="5" class="led {{ irrLed.relay }}"/><text x="42" y="90" class="pin-t">ACTIVE</text>
+                </g>
+                <text x="76" y="134" text-anchor="middle" class="lbl {{ irrP.relay }}">RELAY MODULE</text>
+              </g>
+
+              <!-- DC PUMP -->
+              <g transform="translate(956 376)">
+                <g class="part lift {{ irrP.pump }}">
+                  <rect x="4" y="8" width="84" height="76" fill="#030607" opacity=".5"/>
+                  <rect x="8" y="12" width="78" height="72" rx="6" fill="url(#ipump)" stroke="#0a0e11" stroke-width="2"/>
+                  <ellipse cx="47" cy="12" rx="39" ry="9" fill="#39424a" stroke="#0a0e11"/>
+                  <g class="{{ irrPumpCls }}">
+                    <circle cx="47" cy="50" r="21" fill="#141a1e" stroke="#2c343a"/>
+                    <g class="rotor"><path d="M47 32v36M29 50h36M34 37l26 26M60 37L34 63" stroke="#7b858c" stroke-width="2.6" stroke-linecap="round"/><circle cx="47" cy="50" r="5" fill="#aab3b9"/></g>
+                  </g>
+                  <path d="M86 56h20v16H86z" fill="#2b3237" stroke="#0a0e11"/>
+                  <path d="M106 60c14 0 18 8 18 18" fill="none" stroke="#1d2328" stroke-width="9" stroke-linecap="round"/>
+                  <text x="47" y="104" text-anchor="middle" class="lbl-s">12 V DC</text>
+                </g>
+                <text x="47" y="126" text-anchor="middle" class="lbl {{ irrP.pump }}">WATER PUMP</text>
+              </g>
+
+              <!-- POT / DEMO SOIL -->
+              <g transform="translate(826 452)">
+                <g class="part {{ irrP.pot }}">
+                  <path d="M6 44h108l-12 92H18z" fill="#2a2420" stroke="#15110e" stroke-width="1.5"/>
+                  <rect class="soil-fill" x="14" y="{{ irrSoilY }}" width="92" height="{{ irrSoilH }}" fill="{{ irrSoilFill }}"/>
+                  <path d="M10 44h100" stroke="#3b332c" stroke-width="2"/>
+                  <path d="M60 46V8M60 28C38 26 34 12 36 2c15 1 25 8 24 24M61 20C64 3 77-2 88 0c-1 15-12 24-27 25" fill="none" stroke="#5f8f52" stroke-width="2.4" stroke-linecap="round"/>
+                  <foreignObject x="0" y="140" width="120" height="20">
+                    <div style="font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--dim);text-align:center;">DEMO SOIL · {{ irrSoilPct }}</div>
+                  </foreignObject>
+                </g>
+              </g>
+
+              <!-- WIRES -->
+              <g class="w {{ irrW.w1 }}">
+                <path class="w-base" d="M145 216 V436 Q145 448 157 448 H518 Q530 448 530 436 V412"/>
+                <path class="w-core" d="M145 216 V436 Q145 448 157 448 H518 Q530 448 530 436 V412" stroke="#8d5f3f"/>
+                <path class="w-live" d="M145 216 V436 Q145 448 157 448 H518 Q530 448 530 436 V412"/>
+                <circle class="pad" cx="145" cy="216" r="4"/><circle class="pad" cx="530" cy="412" r="4"/>
+                <circle class="snap" cx="530" cy="412" r="2"/>
+              </g>
+              <g class="w {{ irrW.w2 }}">
+                <path class="w-base" d="M230 492 H538 Q550 492 550 480 V412"/>
+                <path class="w-core" d="M230 492 H538 Q550 492 550 480 V412" stroke="#4e7d53"/>
+                <path class="w-live" d="M230 492 H538 Q550 492 550 480 V412"/>
+                <circle class="pad" cx="230" cy="492" r="4"/><circle class="pad" cx="550" cy="412" r="4"/>
+                <circle class="snap" cx="550" cy="412" r="2"/>
+              </g>
+              <g class="w {{ irrW.w3 }}">
+                <path class="w-base" d="M500 254 V166 M520 254 V166 M540 254 V166 M560 254 V166 M580 254 V166 M600 254 V166" stroke-width="6"/>
+                <path class="w-core" d="M500 254 V166 M520 254 V166 M540 254 V166 M560 254 V166 M580 254 V166 M600 254 V166" stroke="#6a717a" stroke-width="2.6"/>
+                <path class="w-live" d="M540 254 V166" stroke-dasharray="10 80"/>
+                <circle class="snap" cx="550" cy="166" r="2"/>
+              </g>
+              <g class="w {{ irrW.w4 }}">
+                <path class="w-base" d="M710 310 H756 Q768 310 768 300 H784"/>
+                <path class="w-core" d="M710 310 H756 Q768 310 768 300 H784" stroke="#b5733f"/>
+                <path class="w-live" d="M710 310 H756 Q768 310 768 300 H784" stroke-dasharray="10 70"/>
+                <circle class="pad" cx="710" cy="310" r="4"/><circle class="pad" cx="784" cy="300" r="4"/>
+                <circle class="snap" cx="784" cy="300" r="2"/>
+              </g>
+              <g class="w {{ irrW.w5 }}">
+                <path class="w-base" d="M932 300 H968 Q980 300 980 312 V384"/>
+                <path class="w-core" d="M932 300 H968 Q980 300 980 312 V384" stroke="#8d2f24"/>
+                <path class="w-live" d="M932 300 H968 Q980 300 980 312 V384" stroke="#e3a33c" stroke-dasharray="12 60"/>
+                <circle class="pad" cx="932" cy="300" r="4"/><circle class="pad" cx="980" cy="384" r="4"/>
+                <circle class="snap" cx="980" cy="384" r="2"/>
+              </g>
+
+              <!-- WATER -->
+              <g class="water {{ irrFlowCls }}">
+                <path d="M1080 448 V508 Q1080 522 1066 522 H912" fill="none" stroke="rgba(111,182,232,.22)" stroke-width="7"/>
+                <path d="M1080 448 V508 Q1080 522 1066 522 H912" fill="none" stroke="#6fb6e8" stroke-width="2" stroke-dasharray="10 40" opacity=".8"><animate attributeName="stroke-dashoffset" from="50" to="0" dur=".7s" repeatCount="indefinite"/></path>
+                <circle class="drop" r="4"><animateMotion dur="1.25s" repeatCount="indefinite" path="M1080 448 V508 Q1080 522 1066 522 H912"/></circle>
+                <circle class="drop" r="3" opacity=".6"><animateMotion dur="1.25s" begin=".45s" repeatCount="indefinite" path="M1080 448 V508 Q1080 522 1066 522 H912"/></circle>
+              </g>
+
+              <!-- FIRMWARE DECISION PANEL -->
+              <g transform="translate(40 560)">
+                <g class="panel {{ irrPanel }}">
+                  <rect width="430" height="64" class="panel-bg"/>
+                  <text x="14" y="24" class="lbl-s">FIRMWARE DECISION · DEMONSTRATION LOGIC</text>
+                  <foreignObject x="14" y="32" width="410" height="24">
+                    <div style="font-family:var(--mono);font-size:12.5px;color:#cfd6dc;white-space:pre;">if (soil &lt; <span style="color:var(--amber)">[threshold]</span>) pump = <span style="color:var(--amber)">{{ irrDecision }}</span>;</div>
+                  </foreignObject>
+                </g>
+              </g>
+
+              <!-- STATE READOUT -->
+              <g transform="translate(640 560)">
+                <g class="panel {{ irrPanel2 }}">
+                  <rect width="440" height="64" class="panel-bg"/>
+                  <text x="16" y="24" class="lbl-s">SYSTEM STATE</text>
+                  <foreignObject x="16" y="32" width="412" height="24">
+                    <div style="font-family:var(--mono);font-size:12.5px;letter-spacing:.09em;color:var(--signal);white-space:pre;">{{ irrState }}</div>
+                  </foreignObject>
+                </g>
+              </g>
+
+            </g>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);border:1px solid var(--edge);border-top:0;padding:10px 14px;">
+          <span>SENSE → DECIDE → ACTUATE → RECOVER</span><span>{{ irrSeq }}</span>
+        </div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="credentials" style="max-width:1480px;margin:0 auto;padding:40px 24px 80px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:2px solid var(--edge);padding-bottom:14px;margin-bottom:46px;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">05 / CREDENTIALS</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">STUDY &amp; RECOGNITION</div>
+  </div>
+  <div class="g2" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:26px;">
+      <h2 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(26px,3vw,44px);line-height:1.02;letter-spacing:-.03em;margin:0;">Built on<br><span style="color:var(--copper);">strong basics.</span></h2>
+      <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--dim);">CERTIFICATIONS</div>
+      <div style="display:grid;gap:1px;background:var(--edge);border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);">
+        <div style="background:var(--ink);display:flex;align-items:center;gap:18px;padding:18px 2px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--dim);">01</span>
+          <span style="display:flex;flex-direction:column;gap:5px;"><span style="font-family:var(--font-heading);font-weight:600;font-size:17px;">Embedded Systems</span><span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute);">NPTEL · IIT MADRAS</span></span>
+        </div>
+        <div style="background:var(--ink);display:flex;align-items:center;gap:18px;padding:18px 2px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--dim);">02</span>
+          <span style="display:flex;flex-direction:column;gap:5px;"><span style="font-family:var(--font-heading);font-weight:600;font-size:17px;">C Programming</span><span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute);">SKILLRACK</span></span>
+        </div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--edge);background:var(--graphite);position:relative;overflow:hidden;">
+      <div style="padding:12px 18px;border-bottom:1px solid var(--edge);font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--dim);">EDUCATION</div>
+      <div style="padding:26px 18px;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;gap:12px;font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--dim);"><span>2023 — 2027</span><span style="color:var(--copper);">EXPECTED</span></div>
+        <h3 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(22px,2.4vw,34px);line-height:1.05;letter-spacing:-.025em;margin:0;">Peri Institute<br>of Technology</h3>
+        <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--mute);">B.E. Electronics and Communication Engineering</p>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--edge);padding-top:16px;">
+          <span style="font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--dim);">CHENNAI, INDIA</span>
+          <span style="font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--mute);">CGPA <span style="color:var(--text);font-size:20px;">6.9</span> / 10</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="connector"><span></span></div>
+
+<section id="contact" style="border-top:2px solid var(--edge);">
+  <div style="max-width:1480px;margin:0 auto;padding:70px 24px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:1px solid var(--edge-soft);padding-bottom:14px;margin-bottom:46px;">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--dim);">06 / NEXT CONNECTION</div>
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);">OPEN CIRCUIT</div>
+    </div>
+    <div class="g2" style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:48px;align-items:start;">
+      <div style="display:flex;flex-direction:column;gap:26px;">
+        <div style="display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);"><span style="width:34px;height:1px;background:var(--copper);"></span>GOT A SYSTEM TO BUILD?</div>
+        <h2 style="font-family:var(--font-heading);font-weight:800;font-size:clamp(34px,5vw,74px);line-height:.95;letter-spacing:-.035em;margin:0;">Let's make<br><span style="color:var(--accent);">it work.</span></h2>
+        <p style="margin:0;font-size:16px;line-height:1.7;color:var(--mute);max-width:44ch;text-wrap:pretty;">For embedded projects, internship opportunities or a good conversation about hardware and firmware.</p>
+      </div>
+      <div style="display:grid;gap:1px;background:var(--edge);border:1px solid var(--edge);">
+        <a class="ctl" href="mailto:berthinand99@gmail.com" style="background:var(--ink);display:flex;align-items:center;gap:16px;padding:19px 18px;" style-hover="background:#13171b">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);width:64px;">EMAIL</span>
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;">berthinand99@gmail.com</span><span style="margin-left:auto;color:var(--copper);">↗</span>
+        </a>
+        <a class="ctl" href="tel:+919884550536" style="background:var(--ink);display:flex;align-items:center;gap:16px;padding:19px 18px;" style-hover="background:#13171b">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);width:64px;">PHONE</span>
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;">+91 98845 50536</span><span style="margin-left:auto;color:var(--copper);">↗</span>
+        </a>
+        <a class="ctl" href="https://linkedin.com/in/berthinand-a-76884628a" target="_blank" rel="noreferrer" style="background:var(--ink);display:flex;align-items:center;gap:16px;padding:19px 18px;" style-hover="background:#13171b">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);width:64px;">LINKEDIN</span>
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;">berthinand-a</span><span style="margin-left:auto;color:var(--copper);">↗</span>
+        </a>
+        <a class="ctl" href="https://github.com/a-berthinand" target="_blank" rel="noreferrer" style="background:var(--ink);display:flex;align-items:center;gap:16px;padding:19px 18px;" style-hover="background:#13171b">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:.17em;color:var(--dim);width:64px;">GITHUB</span>
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;">a-berthinand</span><span style="margin-left:auto;color:var(--copper);">↗</span>
+        </a>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:20px;border-top:1px solid var(--edge-soft);margin-top:60px;padding-top:22px;">
+      <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--dim);">A. BERTHINAND · EMBEDDED SYSTEMS &amp; FIRMWARE ENGINEER</span>
+      <a href="#top" style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--mute);">BACK TO TOP ↑</a>
+      <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--dim);">CHENNAI, INDIA · 13°04′ N / 80°16′ E</span>
+    </div>
+  </div>
+</section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1480},&quot;bootIntro&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;autoRun&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;showGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Scene&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#ec3013&quot;,&quot;options&quot;:[&quot;#ec3013&quot;,&quot;#bf7a4d&quot;,&quot;#7fd4c8&quot;,&quot;#e3a33c&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Scene&quot;}}">
+const IRR = ['BOARD','SENSORS','ACTUATORS','WIRING','POWER ON','MONITOR','DECIDE','IRRIGATE','RECOVER'];
+const TMR = ['PACKAGE','CLOCK','DISPLAY','WIRING','CONFIGURE','COUNTING'];
+const ADC = ['SENSOR','CONVERTER','WIRING','SAMPLE','QUANTIZE','ENCODE','PROCESS','DISPLAY'];
+const HEX = n => n.toString(16).toUpperCase().padStart(2,'0');
+const BITS = n => n.toString(2).padStart(8,'0').split('').join(' ');
+
+class Component extends DCLogic {
+  state = { irr: 0, irrMode: 'scroll', soil: 46, temp: 31.2, prog: 0, inView: true,
+    tmr: 0, tmrMode: 'scroll', tmrProg: 0, ticks: 0, tf: false,
+    adc: 0, adcMode: 'scroll', adcProg: 0, sample: 0,
+    boot: 0, proto: 'UART', flow: 0, menu: false };
+
+  constructor(p){
+    super(p);
+    this.irrRef = React.createRef(); this.irrSvg = React.createRef(); this.irrCam = React.createRef();
+    this.tmrRef = React.createRef(); this.adcRef = React.createRef();
+  }
+
+  componentDidMount(){
+    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (this.reduced) this.setState({ irr: IRR.length - 1 });
+    this.onScroll = () => { if (this.raf) return; this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); }); };
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onScroll, { passive: true });
+    this.io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.target === this.irrRef.current) this.setState({ inView: e.isIntersecting });
+      if (e.target === this.tmrRef.current) this.tmrIn = e.isIntersecting;
+      if (e.target === this.adcRef.current) this.adcIn = e.isIntersecting;
+    }), { rootMargin: '140px' });
+    [this.irrRef, this.tmrRef, this.adcRef].forEach(r => r.current && this.io.observe(r.current));
+    this.onMove = e => {
+      const svg = this.irrSvg.current, cam = this.irrCam.current;
+      if (!svg || !cam || this.reduced) return;
+      const r = svg.getBoundingClientRect();
+      const mx = ((e.clientX - r.left) / r.width - .5) * 2, my = ((e.clientY - r.top) / r.height - .5) * 2;
+      cam.style.setProperty('--mx', (mx * 9).toFixed(2) + 'px');
+      cam.style.setProperty('--my', (my * 6).toFixed(2) + 'px');
+    };
+    window.addEventListener('pointermove', this.onMove, { passive: true });
+    this.tick = setInterval(() => this.simulate(), 220);
+    this.applyAccent();
+    if (this.props.autoRun) this.setState({ irrMode: 'loop', tmrMode: 'loop', adcMode: 'loop', irr: 5, tmr: 5, adc: 7 });
+    this.boots = [];
+    if (this.reduced || this.props.bootIntro === false) { this.setState({ boot: 5 }); }
+    else [[260,1],[1000,2],[1850,3],[2600,4],[3350,5]].forEach(([t, b]) => this.boots.push(setTimeout(() => this.setState({ boot: b }), t)));
+    this.flowT = setInterval(() => this.setState(st => ({ flow: (st.flow + 1) % 6 })), 1400);
+    this.measure();
+  }
+  componentWillUnmount(){
+    window.removeEventListener('scroll', this.onScroll); window.removeEventListener('resize', this.onScroll);
+    window.removeEventListener('pointermove', this.onMove);
+    if (this.io) this.io.disconnect(); clearInterval(this.tick); clearInterval(this.flowT);
+    (this.boots || []).forEach(clearTimeout); if (this.raf) cancelAnimationFrame(this.raf);
+  }
+
+  applyAccent(){
+    const a = this.props.accent;
+    if (a) document.documentElement.style.setProperty('--accent', a);
+  }
+  componentDidUpdate(prev){ if (prev.accent !== this.props.accent) this.applyAccent(); }
+
+  measure(){
+    this.track(this.irrRef, 'irr', 'prog', IRR);
+    this.track(this.tmrRef, 'tmr', 'tmrProg', TMR);
+    this.track(this.adcRef, 'adc', 'adcProg', ADC);
+  }
+
+  track(ref, key, pkey, stages){
+    const el = ref.current; if (!el || this.state[key + 'Mode'] !== 'scroll') return;
+    const r = el.getBoundingClientRect(), vh = window.innerHeight;
+    const p = Math.max(0, Math.min(1, (vh * .78 - r.top) / (r.height + vh * .55)));
+    const s = this.reduced ? stages.length - 1 : Math.min(stages.length - 1, Math.floor(p * stages.length));
+    const tear = !this.reduced && (p > .965 || p < .012);
+    if (s !== this.state[key] || tear !== this.state[key + 'Tear'] || Math.abs(p - this.state[pkey]) > .004)
+      this.setState({ [key]: s, [pkey]: p, [key + 'Tear']: tear });
+  }
+
+  simulate(){
+    this.beat = (this.beat || 0) + 1;
+    if (this.tmrIn && this.state.tmr >= 5 && !this.reduced && this.beat % 5 === 0){
+      const t = (this.state.ticks + 1) % 256;
+      this.setState({ ticks: t, tf: t === 0 });
+    }
+    if (this.adcIn && this.state.adc >= 3 && !this.reduced && this.beat % 5 === 0){
+      this.setState({ sample: (this.state.sample + 1) % 16 });
+    }
+    if (!this.state.inView) return;
+    const s = this.state.irr;
+    let target = 46;
+    if (s === 6) target = 16; else if (s === 7) target = Math.min(78, this.state.soil + 9); else if (s >= 8) target = 76;
+    const soil = this.state.soil + (target - this.state.soil) * (this.reduced ? 1 : .14);
+    const temp = s >= 4 ? 31.2 + (Math.sin(Date.now() / 2600) * .3) : 31.2;
+    this.setState({ soil, temp });
+    if (this.state.irrMode === 'loop' && s >= 5) {
+      this.loopT = (this.loopT || 0) + 1;
+      const seq = [5,5,5,5,5,5,5,5,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8];
+      this.setState({ irr: seq[this.loopT % seq.length] });
+    }
+  }
+
+  step(key, stages, d){
+    const n = Math.max(0, Math.min(stages.length - 1, this.state[key] + d));
+    this.setState({ [key]: n, [key + 'Mode']: 'manual' });
+  }
+
+  ctrl(key, stages, extra){
+    return {
+      prev: () => this.step(key, stages, -1),
+      next: () => this.step(key, stages, 1),
+      replay: () => { this.loopT = 0; this.setState(Object.assign({ [key]: 0, [key + 'Mode']: 'manual' }, extra || {})); },
+      run: () => this.setState({ [key + 'Mode']: this.state[key + 'Mode'] === 'loop' ? 'scroll' : 'loop', [key]: Math.max(stages.length - 4, this.state[key]) }),
+      label: this.state[key + 'Mode'] === 'loop' ? 'SCROLL' : 'RUN'
+    };
+  }
+
+  tmrVals(){
+    const s = this.state.tmr, ge = n => s >= n, ticks = this.state.ticks;
+    const off = (n, dir, d) => (ge(n) ? '' : 'enter-' + dir) + (d ? ' ' + d : '');
+    const run = ge(5), c = this.ctrl('tmr', TMR);
+    const secs = ticks, disp = String(Math.floor(secs / 60)).padStart(2,'0') + ':' + String(secs % 60).padStart(2,'0');
+    const hints = ['The 8051 package arrives on the bench.','Crystal and load capacitors arrive.','A hardware-neutral display module arrives.','Oscillator, port bus and ground are routed.','TMOD selects the mode; TCON enables the run bit.','Each clock pulse increments the count register; overflow sets the flag.'];
+    return {
+      tmrRef: this.tmrRef, tmrS: String(s), tmrStageName: TMR[s], tmrHint: hints[s],
+      tmrTear: this.state.tmrTear ? 'tear' : '',
+      tmrCount: '0' + (s + 1) + ' / 0' + TMR.length,
+      tmrSeq: String(Math.round(this.state.tmrProg * 100)).padStart(3,'0') + '% SEQUENCE',
+      tmrTrack: TMR.map((n,i) => ({ bg: i <= s ? (i === s ? 'var(--signal)' : 'var(--copper)') : 'var(--edge)' })),
+      tmrP: { mcu: off(0,'b','d1'), xtal: off(1,'l','d1'), caps: off(1,'l','d2'), disp: off(2,'r','d1') },
+      tmrW: { w1: (ge(3) ? 'on d1 ' : '') + (run ? 'live' : ''), w2: (ge(3) ? 'on d2 ' : '') + (run ? 'live' : ''), w3: ge(3) ? 'on d3' : '' },
+      tmrPanel: ge(4) ? 'show' : '', tmrClk: run ? 'ticking' : '',
+      tmrLed: run ? 'on-g' : (ge(4) ? 'on-g blink' : ''),
+      tmrTMOD: ge(4) ? '0 0 0 1 0 0 0 1' : '– – – – – – – –',
+      tmrTCON: ge(5) ? '0 1 0 0 0 1 0 0' : ge(4) ? '0 0 0 0 0 0 0 0' : '– – – – – – – –',
+      tmrTH: ge(4) ? HEX(252) : '––', tmrTL: run ? HEX(ticks) : ge(4) ? '00' : '––',
+      tmrFlag: this.state.tf && run ? 'TF SET' : 'TF CLEAR',
+      tmrDisp: run ? disp : '--:--',
+      tmrState: run ? 'TIMER RUNNING · COUNT REGISTER INCREMENTING' : ge(4) ? 'TIMER CONFIGURED · RUN BIT PENDING' : ge(3) ? 'INTERCONNECT COMPLETE' : 'COMPONENTS STAGED',
+      tmrPrev: c.prev, tmrNext: c.next, tmrReplay: c.replay, tmrRun: c.run, tmrRunLabel: c.label
+    };
+  }
+
+  adcVals(){
+    const s = this.state.adc, ge = n => s >= n, k = this.state.sample;
+    const off = (n, dir, d) => (ge(n) ? '' : 'enter-' + dir) + (d ? ' ' + d : '');
+    const c = this.ctrl('adc', ADC);
+    const W = 660, N = 16, SP = W / N, A = 55, PER = 330;
+    const sine = x => -Math.sin(2 * Math.PI * x / PER) * A;
+    let sd = 'M0 ' + sine(0).toFixed(1);
+    for (let x = 6; x <= W; x += 6) sd += ' L' + x + ' ' + sine(x).toFixed(1);
+    const q = y => Math.round(y / (A / 4)) * (A / 4);
+    let st = '';
+    for (let i = 0; i < N; i++){
+      const y = q(sine(i * SP + SP / 2)).toFixed(1);
+      st += (i === 0 ? 'M0 ' + y : ' L' + (i * SP) + ' ' + y) + ' L' + ((i + 1) * SP) + ' ' + y;
+    }
+    const held = q(sine(k * SP + SP / 2));
+    const v = 2.5 + (-held / A) * 2.0, code = Math.round(v / 5 * 255);
+    const hints = ['An analog sensor arrives.','A conversion module arrives; its device type stays configurable.','Analog line, data bus and display lines are routed.','The converter holds the analog level at the sampling instant.','The held level is compared against discrete steps.','The step index becomes a binary word.','The word crosses the data bus into the 8051.','Firmware scales the word and writes characters to the LCD.'];
+    return {
+      adcRef: this.adcRef, adcS: String(s), adcStageName: ADC[s], adcHint: hints[s],
+      adcTear: this.state.adcTear ? 'tear' : '',
+      adcCount: '0' + (s + 1) + ' / 0' + ADC.length,
+      adcSeq: String(Math.round(this.state.adcProg * 100)).padStart(3,'0') + '% SEQUENCE',
+      adcTrack: ADC.map((n,i) => ({ bg: i <= s ? (i === s ? 'var(--signal)' : 'var(--copper)') : 'var(--edge)' })),
+      adcP: { sensor: off(0,'l','d1'), conv: off(1,'b','d1'), mcu: off(1,'b','d3'), lcd: off(1,'r','d5') },
+      adcW: { w1: (ge(2) ? 'on d1 ' : '') + (ge(3) ? 'live-slow' : ''), w2: (ge(2) ? 'on d2 ' : '') + (ge(6) ? 'live' : ''), w3: (ge(2) ? 'on d3 ' : '') + (ge(7) ? 'live' : '') },
+      adcHold: ge(3) ? 'show' : '', adcQuant: ge(4) ? 'show' : '', adcCode: ge(5) ? 'show' : '',
+      adcSineD: sd, adcStairD: st, adcSampleNo: ge(3) ? String(k + 1).padStart(2,'0') + ' / 16' : '—',
+      adcMarkStyle: 'transform:translateX(' + (k * SP + SP / 2).toFixed(1) + 'px)',
+      adcHoldStyle: 'transform:translateY(' + held.toFixed(1) + 'px)',
+      adcBarStyle: 'width:' + ((code / 255) * 100).toFixed(1) + '%',
+      adcBits: ge(5) ? BITS(code) : '– – – – – – – –',
+      adcHexV: ge(5) ? '0x' + HEX(code) : '0x––',
+      adcVolts: ge(3) ? v.toFixed(2) + ' V' : '—— V',
+      adcLcdLit: ge(7) ? 'lit' : '',
+      adcLcdFill: ge(7) ? 'url(#iglass)' : 'url(#iglassoff)',
+      adcLcd1: ge(7) ? 'SENSOR  INPUT' : '                ',
+      adcLcd2: ge(7) ? ('     ' + v.toFixed(2) + ' V') : '                ',
+      adcLed: ge(7) ? 'on-g' : '',
+      adcState: ge(7) ? 'SAMPLE → CONVERT → PROCESS → DISPLAY · LOOPING' : ge(5) ? 'DIGITAL WORD READY' : ge(3) ? 'SAMPLING ANALOG INPUT' : ge(2) ? 'SIGNAL PATH ROUTED' : 'COMPONENTS STAGED',
+      adcPrev: c.prev, adcNext: c.next, adcReplay: c.replay, adcRun: c.run, adcRunLabel: c.label
+    };
+  }
+
+  waveVals(){
+    const W = 720, HI = 8, LO = 40, kind = this.state.proto;
+    const lvl = bits => {
+      const sw = W / bits.length; let d = 'M0 ' + (bits[0] ? HI : LO), x = 0;
+      bits.forEach((b, i) => { const y = b ? HI : LO; if (i) d += ' L' + x.toFixed(1) + ' ' + y; x += sw; d += ' L' + x.toFixed(1) + ' ' + y; });
+      return d;
+    };
+    const clk = n => { const a = []; for (let i = 0; i < n * 2; i++) a.push(i % 2 === 0 ? 0 : 1); return a; };
+    const byte = [1,0,1,1,0,0,1,0];
+    const sets = {
+      UART: { note: 'ASYNCHRONOUS · ONE START BIT, EIGHT DATA BITS, ONE STOP BIT · NO SHARED CLOCK',
+        lanes: [{ name: 'TX', d: lvl([1,1,0].concat(byte, [1,1,1])) }, { name: 'RX', d: lvl([1,1,1,1,0].concat([0,1,0,0,1,1,0,1], [1,1])) }] },
+      'I²C': { note: 'TWO WIRES, ADDRESSED, CLOCK DRIVEN BY THE MASTER · START AND STOP CONDITIONS FRAME THE BYTE',
+        lanes: [{ name: 'SCL', d: lvl([1,1].concat(clk(8), [1,1])) }, { name: 'SDA', d: lvl([1,0,0,1,1,0,0,1,1,1,0,0,1,1,0,0,0,1,1]) }] },
+      SPI: { note: 'FOUR WIRES, FULL DUPLEX · CHIP SELECT FRAMES THE TRANSFER, DATA SHIFTS ON THE CLOCK EDGE',
+        lanes: [{ name: 'SCLK', d: lvl([1,1].concat(clk(8), [1,1])) }, { name: 'MOSI', d: lvl([1,1,1,1,0,0,1,1,0,0,1,1,0,0,1,1,1,1]) },
+          { name: 'MISO', d: lvl([1,1,0,0,1,1,1,1,0,0,0,0,1,1,0,0,1,1]) }, { name: 'CS', d: lvl([1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1]) }] },
+      PWM: { note: 'FIXED PERIOD, VARYING ON-TIME · THE AVERAGE VOLTAGE FOLLOWS THE DUTY CYCLE',
+        lanes: [{ name: '25%', d: lvl([1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0]) }, { name: '50%', d: lvl([1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0]) },
+          { name: '75%', d: lvl([1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0]) }] },
+      ADC: { note: 'A CONTINUOUS LEVEL BECOMES A NUMBER · SAMPLE, HOLD, COMPARE, ENCODE',
+        lanes: [{ name: 'ANALOG', d: (() => { let d = 'M0 24'; for (let x = 6; x <= W; x += 6) d += ' L' + x + ' ' + (24 - Math.sin(2 * Math.PI * x / 360) * 16).toFixed(1); return d; })() },
+          { name: 'HELD', d: (() => { let d = ''; const n = 12, sw = W / n; for (let i = 0; i < n; i++){ const y = (24 - Math.round(Math.sin(2 * Math.PI * (i * sw + sw / 2) / 360) * 16 / 4) * 4).toFixed(1); d += (i ? ' L' : 'M') + (i * sw) + ' ' + y + ' L' + ((i + 1) * sw) + ' ' + y; } return d; })() }] },
+      TIMER: { note: 'EVERY PULSE ADVANCES THE COUNT REGISTER · OVERFLOW RAISES THE FLAG',
+        lanes: [{ name: 'CLK', d: lvl(clk(12)) }, { name: 'COUNT', d: (() => { let d = ''; const n = 12, sw = W / n; for (let i = 0; i < n; i++){ const y = (40 - (i % 6) * 6).toFixed(1); d += (i ? ' L' : 'M') + (i * sw) + ' ' + y + ' L' + ((i + 1) * sw) + ' ' + y; } return d; })() },
+          { name: 'FLAG', d: lvl([0,0,0,0,0,0,1,1,0,0,0,0]) }] },
+      INTERRUPT: { note: 'MAIN LOOP YIELDS ON THE REQUEST, THE SERVICE ROUTINE RUNS, EXECUTION RESUMES WHERE IT LEFT OFF',
+        lanes: [{ name: 'MAIN', d: lvl([1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1]) }, { name: 'IRQ', d: lvl([0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0]) },
+          { name: 'ISR', d: lvl([0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0]) }] }
+    };
+    const cur = sets[kind] || sets.UART;
+    return { protoLanes: cur.lanes.map((l, i) => ({ name: l.name, d: l.d, y: String(i * 58) })), protoNote: cur.note, protoName: kind,
+      protoList: Object.keys(sets).map(n => ({ name: n, bg: n === kind ? 'var(--accent)' : 'transparent', color: n === kind ? '#fff' : 'var(--mute)', bd: n === kind ? 'var(--accent)' : 'var(--edge)',
+        pick: () => this.setState({ proto: n }) })) };
+  }
+
+  renderVals(){
+    const s = this.state.irr, soilV = this.state.soil, tempV = this.state.temp;
+    const ge = n => s >= n;
+    const off = (n, dir, d) => (ge(n) ? '' : 'enter-' + dir) + (d ? ' ' + d : '');
+    const dry = soilV < 30;
+    const pumping = s === 7;
+    const lit = ge(4);
+
+    const pad = (l, r) => (l + ' '.repeat(Math.max(1, 16 - l.length - r.length)) + r).slice(0, 16);
+    let l1 = '                ', l2 = '                ';
+    if (s === 4) { l1 = 'SYSTEM  BOOT'; l2 = 'LCD INIT  ....'; }
+    else if (ge(5)) {
+      l1 = pad('TEMP', tempV.toFixed(1) + 'C');
+      l2 = pad('SOIL ' + (dry ? 'DRY' : 'OK'), 'PMP ' + (pumping ? 'ON' : 'OFF'));
+    }
+
+    const states = ['COMPONENTS STAGED','SENSORS PLACED','ACTUATORS PLACED','ROUTING HARNESS','POWER RAIL UP · FIRMWARE BOOT','MONITORING · SAMPLE 1 Hz','MOISTURE BELOW THRESHOLD','RELAY CLOSED · PUMP RUNNING','MOISTURE RECOVERED · RELAY OPEN'];
+    const hints = ['Board arrives on the bench.','Temperature and moisture sensing arrive.','Display, relay and pump arrive.','Each subsystem is wired in turn.','Rail energises, firmware boots, display initialises.','Firmware samples both sensors.','Comparison against the configured threshold.','Output pin high, relay closed, pump driving water.','Moisture restored; output pin low, relay opens.'];
+
+    const b = this.state.boot, fl = this.state.flow;
+    const steps = ['WRITE CODE','COMPILE','FLASH','DEBUG','TEST','VALIDATE'];
+    return Object.assign({}, this.tmrVals(), this.adcVals(), this.waveVals(), {
+      bootCls: 'b' + b,
+      rootCls: this.props.showGrid === false ? 'nogrid' : '',
+      bootLines: [
+        { t: 'PWR  RAIL STABLE', on: b >= 1 }, { t: 'CLK  11.0592 MHz SOURCE DETECTED', on: b >= 2 },
+        { t: 'GPIO PORTS INITIALISED', on: b >= 3 }, { t: 'SYSTEM ONLINE', on: b >= 4 },
+        { t: 'FIRMWARE INITIALISED', on: b >= 4 }, { t: 'PORTFOLIO READY', on: b >= 5 }
+      ].map(l => ({ t: l.t, op: l.on ? '1' : '0', color: l.on ? (l.t === 'PORTFOLIO READY' ? 'var(--signal)' : 'var(--mute)') : 'var(--dim)' })),
+      flowSteps: steps.map((n, i) => ({ name: n, n: '0' + (i + 1),
+        sub: ['EMBEDDED C','KEIL µVISION','TARGET DEVICE','STEP / INSPECT','ON HARDWARE','SIGN-OFF'][i],
+        bd: i === fl ? 'var(--signal)' : 'var(--edge)', color: i === fl ? 'var(--text)' : 'var(--mute)',
+        dot: i === fl ? 'var(--signal)' : i < fl ? 'var(--copper)' : 'var(--edge)',
+        glow: i === fl ? '0 0 10px var(--signal)' : 'none' })),
+      heroPins: (() => {
+        const out = [], N = 14, step = 20, start = 210 + 10;
+        for (let i = 0; i < N; i++){
+          const p = start + i * step;
+          out.push({ x: String(p), y: '168', w: '8', h: '34', d: (i * 26) + 'ms' });
+          out.push({ x: String(p), y: '498', w: '8', h: '34', d: (i * 26 + 180) + 'ms' });
+          out.push({ x: '168', y: String(p), w: '34', h: '8', d: (i * 26 + 90) + 'ms' });
+          out.push({ x: '498', y: String(p), w: '34', h: '8', d: (i * 26 + 270) + 'ms' });
+        }
+        return out;
+      })(),
+      menuOpen: this.state.menu, toggleMenu: () => this.setState({ menu: !this.state.menu }),
+      closeMenu: () => this.setState({ menu: false }),
+      irrRef: this.irrRef, irrSvg: this.irrSvg, irrCam: this.irrCam,
+      irrS: String(s),
+      irrTear: this.state.irrTear ? 'tear' : '',
+      irrStageName: IRR[s],
+      irrCount: '0' + (s + 1) + ' / 0' + IRR.length,
+      irrHint: hints[s],
+      irrSeq: String(Math.round(this.state.prog * 100)).padStart(3, '0') + '% SEQUENCE',
+      irrTrack: IRR.map((n, i) => ({ bg: i <= s ? (i === s ? 'var(--signal)' : 'var(--copper)') : 'var(--edge)' })),
+      irrParts: [
+        { name: 'ARDUINO UNO', on: ge(0) }, { name: 'LM35', on: ge(1) }, { name: 'SOIL SENSOR', on: ge(1) },
+        { name: '16×2 LCD', on: ge(2) }, { name: 'RELAY', on: ge(2) }, { name: 'DC PUMP', on: ge(2) }
+      ].map(p => ({ name: p.name, border: p.on ? 'var(--copper-dim)' : 'var(--edge-soft)', color: p.on ? 'var(--text)' : 'var(--dim)' })),
+      irrP: {
+        uno: off(0, 'b', 'd1'), lm35: off(1, 'l', 'd1'), soil: off(1, 'l', 'd3'),
+        lcd: off(2, 't', 'd1'), relay: off(2, 'r', 'd3'), pump: off(2, 'r', 'd5'), pot: ge(2) ? '' : 'hidden'
+      },
+      irrW: {
+        w1: (ge(3) ? 'on d1 ' : '') + (ge(5) ? 'live-slow' : ''),
+        w2: (ge(3) ? 'on d2 ' : '') + (ge(5) ? 'live-slow' : ''),
+        w3: (ge(3) ? 'on d3 ' : '') + (ge(4) ? 'live' : ''),
+        w4: (ge(3) ? 'on d4 ' : '') + (s >= 6 ? 'live' : ''),
+        w5: (ge(3) ? 'on d5 ' : '') + (pumping ? 'live' : '')
+      },
+      irrLed: {
+        pwr: lit ? 'on' : '', l13: pumping ? 'on-a' : (ge(5) ? 'on-g blink' : ''),
+        soil: ge(4) ? 'on-g' : '', relay: pumping ? 'on-a' : ''
+      },
+      irrLcdLit: lit ? 'lit' : '',
+      irrLcdFill: lit ? 'url(#iglass)' : 'url(#iglassoff)',
+      irrLcd1: l1, irrLcd2: l2,
+      irrRelayCls: pumping ? 'closed' : '',
+      irrPumpCls: pumping ? 'spin' : '',
+      irrFlowCls: pumping ? 'flow' : '',
+      irrSoilY: String(136 - (soilV / 100) * 86), irrSoilH: String((soilV / 100) * 86),
+      irrSoilFill: dry ? '#6b4b33' : '#3f6b3a',
+      irrSoilPct: Math.round(soilV) + '%',
+      irrPanel: ge(6) ? 'show' : '', irrPanel2: ge(4) ? 'show' : '',
+      irrFocus: 'f' + (s <= 2 ? 'wide' : s === 3 ? 'wire' : s === 4 ? 'board' : s === 5 ? 'sense' : s === 6 ? 'logic' : 'act'),
+      irrDecision: pumping ? 'ON' : 'OFF',
+      irrState: states[s],
+      irrPrev: () => this.step('irr', IRR, -1), irrNext: () => this.step('irr', IRR, 1),
+      irrReplay: () => { this.loopT = 0; this.setState({ irr: 0, irrMode: 'manual', soil: 46 }); },
+      irrRun: () => this.setState({ irrMode: this.state.irrMode === 'loop' ? 'scroll' : 'loop', irr: Math.max(5, this.state.irr) }),
+      irrRunLabel: this.state.irrMode === 'loop' ? 'SCROLL' : 'RUN'
+    });
+  }
+}
+</script>
+</body>
+</html>
